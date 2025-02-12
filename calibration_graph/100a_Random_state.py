@@ -40,8 +40,7 @@ class Parameters(NodeParameters):
 
 #theta,phi = random_bloch_state_uniform()
 
-
-node = QualibrationNode(name="100a_Quantum_Memory", parameters=Parameters())
+node = QualibrationNode(name="100a_Random_state", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -97,7 +96,7 @@ def QuantumMemory_program(qubit,theta=theta,phi=phi):
             with for_(tomo_axis, 0, tomo_axis < 3, tomo_axis + 1):
 
                 if reset_type == "active":
-                    active_reset(qubit, "readout",max_attempts=15,wait_time=4)
+                    active_reset(qubit, "readout",max_attempts=15,wait_time=500)
                 elif reset_type == "thermal":
                     qubit.wait(4 * qubit.thermalization_time * u.ns)
                 else:
@@ -151,13 +150,6 @@ if node.parameters.simulate:
     node.save()
     
 elif node.parameters.load_data_id is None:
-#    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-#        job = qm.execute(QuantumMemory)
-#        for i in range(num_qubits):
-#            results = fetching_tool(job, ["n"], mode="live")
-#            while results.is_processing():
-#                n = results.fetch_all()[0]
-#                progress_counter(n, n_runs, start_time=results.start_time)
     job_ = []
     for qubit in qubits:
         with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:

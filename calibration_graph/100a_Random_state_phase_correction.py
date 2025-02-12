@@ -1,26 +1,6 @@
 """
-        IQ BLOBS
-This sequence involves measuring the state of the resonator 'N' times, first after thermalization (with the qubit
-in the |g> state) and then after applying a pi pulse to the qubit (bringing the qubit to the |e> state) successively.
-The resulting IQ blobs are displayed, and the data is processed to determine:
-    - The rotation angle required for the integration weights, ensuring that the separation between |g> and |e> states
-      aligns with the 'I' quadrature.
-    - The threshold along the 'I' quadrature for effective qubit state discrimination.
-    - The readout fidelity matrix, which is also influenced by the pi pulse fidelity.
-
-Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit.wait(qubit.thermalization_time * u.ns) spectroscopy, power_rabi and updated the state.
-    - Set the desired flux bias
-
-Next steps before going to the next node:
-    - Update the rotation angle (rotation_angle) in the state.
-    - Update the g -> e thresholds (threshold & rus_threshold) in the state.
-    - Update the confusion matrices in the state.
-    - Save the current state
+    Quantum Memory
 """
-
-
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
@@ -32,6 +12,7 @@ from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from qualang_tools.analysis.discriminator import two_state_discriminator
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.multi_user import qm_session
+from qualang_tools.loops import from_array
 from qualang_tools.units import unit
 from qm import SimulationConfig
 from qm.qua import *
@@ -47,8 +28,10 @@ from qiskit.visualization.bloch import Bloch
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q1']
+    qubits: Optional[List[str]] = None
     num_runs: int = 10000
+    max_time_in_ns: int = 160
+
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
@@ -56,9 +39,9 @@ class Parameters(NodeParameters):
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
+    desired_state: Optional[List[float]] = [np.pi/2,0] #theta,phi
 
-theta,phi = random_bloch_state_uniform()
-#theta,phi = 0,0
+#theta,phi = random_bloch_state_uniform()
 
 node = QualibrationNode(name="100a_Quantum_Memory", parameters=Parameters())
 
@@ -99,42 +82,47 @@ num_qubits = len(qubits)
 n_runs = node.parameters.num_runs  # Number of runs
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
+#theta,phi = random_bloch_state_uniform()
+theta,phi = node.parameters.desired_state[0],node.parameters.desired_state[1]
+times_cycles = np.arange(0, node.parameters.max_time_in_ns // 4)
 
-with program() as QuantumMemory:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
-    state = [declare(int) for _ in range(num_qubits)]
-    state_st = [declare_stream() for _ in range(num_qubits)]
-    tomo_axis = declare(int)
-    for i, qubit in enumerate(qubits):
+def QuantumMemory_program(qubit,theta=theta,phi=phi):
+    with program() as QuantumMemory:
+        t = declare(int)
+        I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=1)
+        state = [declare(int) for _ in range(1)]
+        state_st = [declare_stream() for _ in range(1)]
+        tomo_axis = declare(int)
 
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
         with for_(n, 0, n < n_runs, n + 1):
             save(n, n_st)
-            with for_(tomo_axis, 0, tomo_axis < 3, tomo_axis + 1):
+            with for_(*from_array(t,times_cycles)):
+                with for_(tomo_axis, 0, tomo_axis < 3, tomo_axis + 1):
 
-                if reset_type == "active":
-                    active_reset(qubit, "readout",max_attempts=15,wait_time=4)
-                elif reset_type == "thermal":
-                    qubit.wait(4 * qubit.thermalization_time * u.ns)
-                else:
-                    raise ValueError(f"Unrecognized reset type {reset_type}.")
+                    if reset_type == "active":
+                        active_reset(qubit, "readout",max_attempts=15,wait_time=500)
+                    elif reset_type == "thermal":
+                        qubit.wait(4 * qubit.thermalization_time * u.ns)
+                    else:
+                        raise ValueError(f"Unrecognized reset type {reset_type}.")
 
-                qubit.align()
-                qubit.xy.play("y180",amplitude_scale = theta/np.pi)
-                qubit.xy.frame_rotation_2pi(phi/np.pi/2-0.5)
+                    qubit.align()
+                    qubit.xy.play("y180",amplitude_scale = theta/np.pi)
+                    qubit.xy.frame_rotation_2pi(phi/np.pi/2-0.5)
 
-                align()
+                    align()
 
-                #tomography pulses
-                with if_(tomo_axis == 0):
-                    qubit.xy.play("y90")
-                with elif_(tomo_axis == 1):
-                    qubit.xy.play("x90")
-                align()
+                    #tomography pulses
+                    with if_(tomo_axis == 0):
+                        qubit.xy.play("y90")
+                    with elif_(tomo_axis == 1):
+                        qubit.xy.play("x90")
+                    align()
 
-                readout_state(qubit, state[i])
-                save(state[i], state_st[i])
+                    readout_state(qubit, state[0])
+                    save(state[0], state_st[0])
 
 
         
@@ -142,11 +130,10 @@ with program() as QuantumMemory:
         if not node.parameters.multiplexed:
             align()
 
-    with stream_processing():
-        n_st.save("n")
-        for i in range(num_qubits):
-
-            state_st[i].buffer(3).save_all(f"state{i + 1}")
+        with stream_processing():
+            n_st.save("n")
+            state_st[0].buffer(3).buffer(len(times_cycles)).save_all("state1")
+        return QuantumMemory
 
 
 
@@ -169,25 +156,30 @@ if node.parameters.simulate:
     node.save()
     
 elif node.parameters.load_data_id is None:
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        job = qm.execute(QuantumMemory)
-        for i in range(num_qubits):
-            results = fetching_tool(job, ["n"], mode="live")
-            while results.is_processing():
-                n = results.fetch_all()[0]
-                progress_counter(n, n_runs, start_time=results.start_time)
+    job_ = []
+    for qubit in qubits:
+        with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+            job = qm.execute(QuantumMemory_program(qubit))
+            for i in range(num_qubits):
+                results = fetching_tool(job, ["n"], mode="live")
+                while results.is_processing():
+                    n = results.fetch_all()[0]
+                    progress_counter(n, n_runs, start_time=results.start_time)
+            job_.append(job)
 
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
     
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(job.result_handles, qubits, {"N": np.linspace(1, n_runs, n_runs)})
+        #ds = fetch_results_as_xarray(job.result_handles, qubits, {"N": np.linspace(1, n_runs, n_runs)})
+        for i in range(num_qubits):
+            ds_ = fetch_results_as_xarray(job_[i].result_handles, [qubits[i]], {"N": np.linspace(1, n_runs, n_runs)})
+            ds = xr.concat([ds, ds_], dim="qubit") if i != 0 else ds_
 
         extract_state = ds.state.values['value']
-        ds = ds.assign_coords(axis=("axis", ['x', 'y', 'z']))
-        ds['state'] = (["qubit","N", "axis"], extract_state)
-
+        ds = ds.assign_coords(axis=("axis", ['x', 'y', 'z']),timedelay=("timedelay",times_cycles))
+        ds['state']=(["qubit","N","timedelay", "axis"], extract_state)
     else:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
@@ -196,18 +188,22 @@ if not node.parameters.simulate:
     node.results = {"ds": ds, "figs": {}, "results": {}}
     data={}
     mitigate_data = {}
+
     print(f"ideal Bloch vector: {theta} and {phi}")
     for q in qubits:
         x, y, z = (
-            np.bincount(ds.sel(qubit=q.name, axis='x').state.values).tolist(),
-            np.bincount(ds.sel(qubit=q.name, axis='y').state.values).tolist(),
-            np.bincount(ds.sel(qubit=q.name, axis='z').state.values).tolist(),
-        )
-        #check if the data is correct 
-        if not len(x)==len(y)==len(z)==2:
-            print("fail")
-        Bloch_vector = [(1*x[0] - 1*x[1])/n_runs,(1*y[0] - 1*y[1])/n_runs,(1*z[0] - 1*z[1])/n_runs]
-        data[q.name]={'x':x,'y':y,'z':z,'Bloch vector':Bloch_vector}
+            [np.bincount(ds.sel(qubit=q.name, axis='x',timedelay=times_cycles[i]).state.values).tolist() for i in range(len(times_cycles))],
+            [np.bincount(ds.sel(qubit=q.name, axis='y',timedelay=times_cycles[i]).state.values).tolist() for i in range(len(times_cycles))],
+            [np.bincount(ds.sel(qubit=q.name, axis='z',timedelay=times_cycles[i]).state.values).tolist() for i in range(len(times_cycles))],
+        ) 
+        data[q.name] ={}
+        #check if the data is correct
+        for i in range(len(times_cycles)): 
+            if not len(x[i])==len(y[i])==len(z[i])==2:
+                print("fail")
+            Bloch_vector = [(1*x[i][0] - 1*x[i][1])/n_runs,(1*y[i][0] - 1*y[i][1])/n_runs,(1*z[i][0] - 1*z[i][1])/n_runs]
+            data[q.name][i] = {'time_delay': times_cycles[i]*4,'Bloch vector':Bloch_vector}
+            #data[q.name]={'x':x[i],'y':y[i],'z':z[i],'time_delay':times_cycles[i]*4,'Bloch vector':Bloch_vector}
 
         # construct denstiy matrix, fidelity and trace distance
         results = QuantumStateAnalysis(Bloch_vector,[theta,phi])
@@ -249,7 +245,6 @@ if not node.parameters.simulate:
     for ax, qubit in grid_iter(grid):
         bloch_vector = data[qubit['qubit']]['Bloch vector']
         mitigate_bloch_vector = mitigate_data[qubit['qubit']]['Bloch vector']
-        print(bloch_vector,mitigate_bloch_vector)
         ax.set_title(qubit['qubit'])
         ax.text(0.5,0.4,0.99,"raw",color='r',fontsize=8)
         ax.text(0.5,0.4,0.84,"mitigated",color='b',fontsize=8)
@@ -263,6 +258,15 @@ if not node.parameters.simulate:
         bloch.render(title=qubit['qubit'])
 
     grid.fig.suptitle(" Bloch Sphere")
+    from matplotlib.lines import Line2D
+    #legend_elements = [
+    #    Line2D([0], [0], color='red', lw=2, label='raw'),
+    #    Line2D([0], [0], color='blue', lw=2, label='mitigated'),
+    #    Line2D([0], [0], color='green', lw=2, label='ideal')
+    #]
+    #plt.legend(handles=legend_elements,loc='upper right', bbox_to_anchor=(2, 0.5))
+    #plt.legend(handles=legend_elements,loc='upper right')
+
     plt.tight_layout()
     plt.show()
     node.results["figure_Bloch"] = grid.fig
@@ -284,9 +288,9 @@ if not node.parameters.simulate:
         ax.set_title(qubit['qubit'])    
         ax.set_xticks(x , label)
         ax.legend()
-
     grid.fig.suptitle("Random state counts")
     plt.tight_layout()
+    #plt.legend(loc='upper center', bbox_to_anchor=(-0.9, -0.05),ncol=3)
     plt.show()
     node.results["figure_counts"] = grid.fig
 
@@ -308,6 +312,7 @@ if not node.parameters.simulate:
         ax.legend()
     grid.fig.suptitle("Random state mitigated counts")
     plt.tight_layout()
+    #plt.legend(loc='upper center', bbox_to_anchor=(-0.9, -0.05),ncol=3)
     plt.show()
     node.results["figure_mitigated_counts"] = grid.fig
 
@@ -316,7 +321,6 @@ if not node.parameters.simulate:
         for i,j in zip(machine.active_qubit_names,"abcde"):
             machine.qubits[i].xy.thread = j
             machine.qubits[i].resonator.thread = j
-
 
 # %% {Save_results}
 if not node.parameters.simulate:
