@@ -40,13 +40,13 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q1','q3']
+    qubits: Optional[List[str]] = ['q1']
     num_averages: int = 100
-    operation_x180_or_any_90: Literal["x180", "x90", "-x90", "y90", "-y90"] = "x180"
-    min_amp_factor: float = 0.001
+    operation_x180_or_any_90: Literal["x180","y180", "x90", "-x90", "y90", "-y90"] = "x180"
+    min_amp_factor: float = 0.1
     max_amp_factor: float = 1.99
     amp_factor_step: float = 0.005
-    max_number_rabi_pulses_per_sweep: int = 20
+    max_number_rabi_pulses_per_sweep: int = 1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     state_discrimination: bool = False
@@ -55,7 +55,7 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = True
+    multiplexed: bool = False
 
 node = QualibrationNode(name="04_Power_Rabi", parameters=Parameters())
 
@@ -96,7 +96,7 @@ amps = np.arange(
 
 # Number of applied Rabi pulses sweep
 if N_pi > 1:
-    if operation == "x180":
+    if operation == "x180" or "y180":
         N_pi_vec = np.arange(1, N_pi, 2).astype("int")
     elif operation in ["x90", "-x90", "y90", "-y90"]:
         N_pi_vec = np.arange(2, N_pi, 4).astype("int")
@@ -146,7 +146,7 @@ with program() as power_rabi:
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            if operation == "x180":
+            if operation == "x180" or "y180":
                 if state_discrimination:
                     state_stream[i].boolean_to_int().buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(
                         f"state{i + 1}"
@@ -299,7 +299,7 @@ if not node.parameters.simulate:
             ax.axvline(1e3 * ds.abs_amp.loc[qubit][data_max_idx.loc[qubit]], color="r")
         ax.set_xlabel("Amplitude [mV]")
         ax.set_title(qubit["qubit"])
-    grid.fig.suptitle("Rabi : I vs. amplitude")
+    grid.fig.suptitle("Rabi : I vs. amplitude {0}".format(operation))
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig
@@ -309,7 +309,7 @@ if not node.parameters.simulate:
         with node.record_state_updates():
             for q in qubits:
                 q.xy.operations[operation].amplitude = fit_results[q.name]["Pi_amplitude"]
-                if operation == "x180" and node.parameters.update_x90:
+                if node.parameters.update_x90:
                     q.xy.operations["x90"].amplitude = fit_results[q.name]["Pi_amplitude"] / 2
 
         # %% {Save_results}

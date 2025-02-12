@@ -26,8 +26,6 @@ from quam_libs.experiments.ramsey.analysis.fitting import fit_frequency_detuning
 from quam_libs.experiments.ramsey.parameters import Parameters, get_idle_times_in_clock_cycles
 from quam_libs.experiments.ramsey.plotting import plot_ramseys_data_with_fit
 from quam_libs.experiments.simulation import simulate_and_plot
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.fit import fit_oscillation_decay_exp,oscillation_decay_exp
 from quam_libs.macros import qua_declaration, readout_state
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -35,14 +33,13 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm.qua import *
 import matplotlib.pyplot as plt
-import numpy as np
 
 
 node = QualibrationNode(
-    name="06_Ramsey",
+    name="06_Ramsey__",
     parameters=Parameters(
-        qubits=['q1'],
-        num_averages=500,
+        qubits=None,
+        num_averages=100,
         frequency_detuning_in_mhz=1.0,
         min_wait_time_in_ns=16,
         max_wait_time_in_ns=3000,
@@ -175,120 +172,29 @@ if not node.parameters.simulate:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
 
-# %% {Data_analysis}
-    # Fit the Ramsey oscillations based on the qubit state or the 'I' quadrature
-if node.parameters.use_state_discrimination:
-    fit = fit_oscillation_decay_exp(ds.state, "time")
-else:
-    fit = fit_oscillation_decay_exp(ds.I, "time")
-fit.attrs = {"long_name": "time", "units": "µs"}
-fitted = oscillation_decay_exp(
-    ds.time,
-    fit.sel(fit_vals="a"),
-    fit.sel(fit_vals="f"),
-    fit.sel(fit_vals="phi"),
-    fit.sel(fit_vals="offset"),
-    fit.sel(fit_vals="decay"),
-)
-# TODO: add meaningful comments
-frequency = fit.sel(fit_vals="f")
-frequency.attrs = {"long_name": "frequency", "units": "MHz"}
+    # %% {Data_analysis}
+    fits = fit_frequency_detuning_and_t2_decay(ds, node.parameters)
+    node.results["fit_results"] = {k: asdict(v) for k, v in fits.items()}
 
-decay = fit.sel(fit_vals="decay")
-decay.attrs = {"long_name": "decay", "units": "nSec"}
+    for fit in fits.values():
+        fit.log_frequency_offset()
+        fit.log_t2()
 
-frequency = frequency.where(frequency > 0, drop=True)
+    # %% {Plotting}
+    fig = plot_ramseys_data_with_fit(ds, qubits, node.parameters, fits)
+    node.results["figure"] = fig
+    plt.tight_layout()
+    plt.show()
 
-decay = fit.sel(fit_vals="decay")
-decay.attrs = {"long_name": "decay", "units": "nSec"}
+    # %% {Update_state}
+    if node.parameters.load_data_id is None:
+        with node.record_state_updates():
+            for q in qubits:
+                q.xy.intermediate_frequency -= float(fits[q.name].freq_offset)
+                q.T2ramsey = float(fits[q.name].decay)
 
-decay_res = fit.sel(fit_vals="decay_decay")
-decay_res.attrs = {"long_name": "decay", "units": "nSec"}
-
-tau = 1 / fit.sel(fit_vals="decay")
-tau.attrs = {"long_name": "T2*", "units": "uSec"}
-
-tau_error = tau * (np.sqrt(decay_res) / decay)
-tau_error.attrs = {"long_name": "T2* error", "units": "uSec"}
-
-within_detuning = (1e9 * frequency < 2 * detuning).mean(dim="sign") == 1
-positive_shift = frequency.sel(sign=1) > frequency.sel(sign=-1)
-freq_offset = (
-    within_detuning * (frequency * fit.sign).mean(dim="sign")
-    + ~within_detuning * positive_shift * frequency.mean(dim="sign")
-    - ~within_detuning * ~positive_shift * frequency.mean(dim="sign")
-)
-decay = 1e-9 * tau.mean(dim="sign")
-decay_error = 1e-9 * tau_error.mean(dim="sign")
-
-# Save fitting results
-fit_results = {
-    q.name: {
-        "freq_offset": 1e9 * freq_offset.loc[q.name].values,
-        "decay": decay.loc[q.name].values,
-        "decay_error": decay_error.loc[q.name].values,
-    }
-    for q in qubits
-}
-node.results["fit_results"] = fit_results
-for q in qubits:
-    print(
-        f"Frequency offset for qubit {q.name} : {(fit_results[q.name]['freq_offset']/1e6):.2f} MHz "
-    )
-    print(f"T2* for qubit {q.name} : {1e6*fit_results[q.name]['decay']:.2f} us")
-
-# %% {Plotting}
-grid = QubitGrid(ds, [q.grid_location for q in qubits])
-for ax, qubit in grid_iter(grid):
-    if node.parameters.use_state_discrimination:
-        ds.sel(sign=1).loc[qubit].state.plot(
-            ax=ax, x="time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +"
-        )
-        ds.sel(sign=-1).loc[qubit].state.plot(
-            ax=ax, x="time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -"
-        )
-        ax.plot(ds.time, fitted.loc[qubit].sel(sign=1), c="C0", ls="-", lw=1)
-        ax.plot(ds.time, fitted.loc[qubit].sel(sign=-1), c="C1", ls="-", lw=1)
-        ax.set_ylabel("State")
-    else:
-        (ds.sel(sign=1).loc[qubit].I * 1e3).plot(
-            ax=ax, x="time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +"
-        )
-        (ds.sel(sign=-1).loc[qubit].I * 1e3).plot(
-            ax=ax, x="time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -"
-        )
-        ax.set_ylabel("Trans. amp. I [mV]")
-        ax.plot(ds.time, 1e3 * fitted.loc[qubit].sel(sign=1), c="C0", ls="-", lw=1)
-        ax.plot(ds.time, 1e3 * fitted.loc[qubit].sel(sign=-1), c="C1", ls="-", lw=1)
-
-    ax.set_xlabel("Idle time [nS]")
-    ax.set_title(qubit["qubit"])
-    ax.text(
-        0.1,
-        0.9,
-        f'T2* = {1e6*fit_results[qubit["qubit"]]["decay"]:.1f} ± {1e6*fit_results[qubit["qubit"]]["decay_error"]:.1f} µs',
-        transform=ax.transAxes,
-        fontsize=10,
-        verticalalignment="top",
-        bbox=dict(facecolor="white", alpha=0.5),
-    )
-    ax.legend()
-grid.fig.suptitle("Ramsey : I vs. idle time")
-plt.tight_layout()
-plt.show()
-node.results["figure"] = grid.fig
-
-# %% {Update_state}
-if node.parameters.load_data_id is None:
-    with node.record_state_updates():
-        for q in qubits:
-            q.xy.intermediate_frequency -= float(fit_results[q.name]["freq_offset"])
-            q.T2ramsey = float(fit_results[qubit["qubit"]]["decay"])
-
-# %% {Save_results}
-node.outcomes = {q.name: "successful" for q in qubits}
-node.results["initial_parameters"] = node.parameters.model_dump()
-node.machine = machine
-node.save()
-
-# %%
+        # %% {Save_results}
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()

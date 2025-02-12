@@ -38,7 +38,7 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q3']
+    qubits: Optional[List[str]] = None
     num_averages: int = 200
     operation: str = "saturation"
     operation_amplitude_factor: Optional[float] = 1.5
@@ -204,7 +204,7 @@ if not node.parameters.simulate:
 
     # %% {Data_analysis}
     # Find the resonance dips for each flux point
-    peaks = peaks_dips(ds.I, dim="freq", prominence_factor=4)
+    peaks = peaks_dips(ds.I, dim="freq", prominence_factor=6)
     # Fit the result with a parabola
     parabolic_fit_results = peaks.position.polyfit("flux", 2)
     # Try to fit again with a smaller prominence factor (may need some adjustment)
