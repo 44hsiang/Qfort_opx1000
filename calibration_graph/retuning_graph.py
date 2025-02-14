@@ -84,6 +84,13 @@ g = QualibrationGraph(
             num_time_points=500,
             state_discrimination=False,
         ),
+        "Readout_fre_opt": library.nodes["07a_Readout_Frequency_Optimization"].copy(
+            qubits = qubits,
+            flux_point_joint_or_independent="joint",
+            multiplexed=multiplexed,
+            name="Readout_fre_opt",
+            reset_type_thermal_or_active=reset_type_thermal_or_active,
+        ),
         "IQ_blob_thermal": library.nodes["07b_IQ_Blobs"].copy(
             qubits = qubits,
             flux_point_joint_or_independent="joint",
@@ -98,7 +105,12 @@ g = QualibrationGraph(
             name="IQ_blob_active",
             reset_type_thermal_or_active="active",
         ),
-
+        "DRAG": library.nodes["09c_DRAG_Calibration_180_90"].copy(
+            qubits = qubits,
+            flux_point_joint_or_independent="joint",
+            multiplexed=multiplexed,
+            name="DRAG"
+        ),
         "single_qubit_randomized_benchmarking": library.nodes["10a_Single_Qubit_Randomized_Benchmarking"].copy(
             qubits = qubits,
             flux_point_joint_or_independent="joint",
@@ -114,10 +126,11 @@ g = QualibrationGraph(
         ("power_rabi_x180_1", "power_rabi_x180_50"),
         ("power_rabi_x180_50", "ramsey"),
         ("ramsey", "ramsey1"),
-
-        ("ramsey1", "IQ_blob_thermal"),
+        ("ramsey1", "Readout_fre_opt"),
+        ("Readout_fre_opt", "IQ_blob_thermal"),
         ("IQ_blob_thermal", "IQ_blob_active"),
-        ("IQ_blob_active", "single_qubit_randomized_benchmarking")
+        ("IQ_blob_active", "DRAG"),
+        ("DRAG", "single_qubit_randomized_benchmarking"),
     ],
     orchestrator=BasicOrchestrator(skip_failed=False),
 )

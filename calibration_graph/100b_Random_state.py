@@ -72,16 +72,13 @@ else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
 num_qubits = len(qubits)
 
-
-
-
 # %% {QUA_program}
 n_runs = node.parameters.num_runs  # Number of runs
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
 #theta,phi = random_bloch_state_uniform()
 theta,phi = node.parameters.desired_state[0],node.parameters.desired_state[1]
-
+t=4
 def QuantumMemory_program(qubit,theta=theta,phi=phi):
     with program() as QuantumMemory:
         I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=1)
@@ -105,7 +102,7 @@ def QuantumMemory_program(qubit,theta=theta,phi=phi):
                 qubit.align()
                 qubit.xy.play("y180",amplitude_scale = theta/np.pi)
                 qubit.xy.frame_rotation_2pi(phi/np.pi/2-0.5)
-
+                wait(t)             
                 align()
 
                 #tomography pulses
@@ -201,7 +198,7 @@ if not node.parameters.simulate:
         print(q.name)
         print("raw data")
         print(f"Bloch vector: {Bloch_vector}")
-        print(f"theta: {results.theta:.3} and phi: {results.phi:.3}")
+        print(f"theta: {np.rad2deg(results.theta):.3} and phi: {np.rad2deg(results.phi):.3} in degree")
         print(f"fidelity: {results.fidelity:.3} and trace distance: {results.trace_distance:.3}")
         data[q.name]['fidelity'] = results.fidelity
         data[q.name]['trace_distance'] = results.trace_distance        
@@ -226,7 +223,7 @@ if not node.parameters.simulate:
         print(f"mitigated data")
         m_Bloch_vector = [round(i,4) for i in m_Bloch_vector]
         print(f"Mitigated Bloch vector: {m_Bloch_vector}")
-        print(f"theta: {m_results.theta:.3} and phi: {m_results.phi:.3}")        
+        print(f"theta: {np.rad2deg(m_results.theta):.3} and phi: {np.rad2deg(m_results.phi):.3} in degree")
         print(f"fidelity: {m_results.fidelity:.3} and trace distance: {m_results.trace_distance:.3}")
         mitigate_data[q.name]['Bloch vector'] = m_results.bloch_vector
         mitigate_data[q.name]['fidelity'] = m_results.fidelity
@@ -248,16 +245,8 @@ if not node.parameters.simulate:
         bloch.vector_labels = ['raw','mitigated','ideal']
         bloch.render(title=qubit['qubit'])
 
-    grid.fig.suptitle(" Bloch Sphere")
+    grid.fig.suptitle(f"Bloch Sphere: delay = {t*4}ns")
     from matplotlib.lines import Line2D
-    #legend_elements = [
-    #    Line2D([0], [0], color='red', lw=2, label='raw'),
-    #    Line2D([0], [0], color='blue', lw=2, label='mitigated'),
-    #    Line2D([0], [0], color='green', lw=2, label='ideal')
-    #]
-    #plt.legend(handles=legend_elements,loc='upper right', bbox_to_anchor=(2, 0.5))
-    #plt.legend(handles=legend_elements,loc='upper right')
-
     plt.tight_layout()
     plt.show()
     node.results["figure_Bloch"] = grid.fig

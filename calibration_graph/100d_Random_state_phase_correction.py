@@ -28,10 +28,10 @@ from qiskit.visualization.bloch import Bloch
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ['q0','q2']
     num_runs: int = 10000
-    max_time_in_ns: int = 160
-
+    min_wait_time_in_ns: int = 16
+    max_time_in_ns: int = 300
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
@@ -43,7 +43,7 @@ class Parameters(NodeParameters):
 
 #theta,phi = random_bloch_state_uniform()
 
-node = QualibrationNode(name="100a_Quantum_Memory", parameters=Parameters())
+node = QualibrationNode(name="100d_Random_state_phase_correction", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -84,7 +84,7 @@ flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or
 reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
 #theta,phi = random_bloch_state_uniform()
 theta,phi = node.parameters.desired_state[0],node.parameters.desired_state[1]
-times_cycles = np.arange(0, node.parameters.max_time_in_ns // 4)
+times_cycles = np.arange(node.parameters.min_wait_time_in_ns//4, node.parameters.max_time_in_ns // 4)
 
 def QuantumMemory_program(qubit,theta=theta,phi=phi):
     with program() as QuantumMemory:
@@ -111,7 +111,12 @@ def QuantumMemory_program(qubit,theta=theta,phi=phi):
                     qubit.align()
                     qubit.xy.play("y180",amplitude_scale = theta/np.pi)
                     qubit.xy.frame_rotation_2pi(phi/np.pi/2-0.5)
-
+                    qubit.align()
+                    qubit.z.play(
+                    "const",
+                    amplitude_scale=0,
+                    duration=t,
+                    )                          
                     align()
 
                     #tomography pulses
@@ -132,7 +137,7 @@ def QuantumMemory_program(qubit,theta=theta,phi=phi):
 
         with stream_processing():
             n_st.save("n")
-            state_st[0].buffer(3).buffer(len(times_cycles)).save_all("state1")
+            state_st[0].buffer(3).buffer(len(times_cycles)).average().save("state1")
         return QuantumMemory
 
 
@@ -141,7 +146,7 @@ def QuantumMemory_program(qubit,theta=theta,phi=phi):
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
-    job = qmm.simulate(config, QuantumMemory, simulation_config)
+    job = qmm.simulate(config, QuantumMemory_program(qubit), simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
@@ -162,6 +167,7 @@ elif node.parameters.load_data_id is None:
             job = qm.execute(QuantumMemory_program(qubit))
             for i in range(num_qubits):
                 results = fetching_tool(job, ["n"], mode="live")
+                print(f"Qubit {qubits[i].name} is running")
                 while results.is_processing():
                     n = results.fetch_all()[0]
                     progress_counter(n, n_runs, start_time=results.start_time)
@@ -174,18 +180,38 @@ if not node.parameters.simulate:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
         #ds = fetch_results_as_xarray(job.result_handles, qubits, {"N": np.linspace(1, n_runs, n_runs)})
         for i in range(num_qubits):
-            ds_ = fetch_results_as_xarray(job_[i].result_handles, [qubits[i]], {"N": np.linspace(1, n_runs, n_runs)})
+            ds_ = fetch_results_as_xarray(job_[i].result_handles, [qubits[i]], { "axis": ['x','y','z'],"timedelay": times_cycles*4})
             ds = xr.concat([ds, ds_], dim="qubit") if i != 0 else ds_
-
-        extract_state = ds.state.values['value']
-        ds = ds.assign_coords(axis=("axis", ['x', 'y', 'z']),timedelay=("timedelay",times_cycles))
-        ds['state']=(["qubit","N","timedelay", "axis"], extract_state)
     else:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
     
+
     # %% {Data_analysis}
     node.results = {"ds": ds, "figs": {}, "results": {}}
+    #ds["state_avg"] = ds["state"].mean(dim="N")
+    ds["Bloch_vector"] = ((ds["state"].sel(axis='x'))**2+(ds["state"].sel(axis='y'))**2+(ds["state"].sel(axis='z'))**2 )**0.5 
+    ds["Bloch_phi"] = np.degrees(np.arctan(ds["state"].sel(axis='y')/ds["state"].sel(axis='x')))
+    results = QuantumStateAnalysis(Bloch_vector,[theta,phi])
+
+    # %% {Plotting}
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
+    for ax, qubit in grid_iter(grid):
+        ds.sel(qubit=qubit['qubit']).Bloch_phi.plot.line(x='timedelay', ax=ax, marker='o', label='Bloch_vector')
+        ax.set_ylabel('Bloch_phi(degrees)')
+
+    grid = QubitGrid(ds, [q.grid_location for q in qubits],is_3d=True)
+    for ax, qubit in grid_iter(grid):
+
+        bloch = Bloch(axes=ax,font_size=12)
+        bloch.add_vectors(ds.sel(qubit='q0').state.values[0])
+        bloch.add_vectors(ds.sel(qubit='q0').state.values[-1])
+        bloch.add_vectors([np.sin(theta)*np.cos(phi),np.sin(theta)*np.sin(phi),np.cos(theta)])
+        bloch.vector_color = ['r','b','g']
+        bloch.vector_labels = ['raw','mitigated','ideal']
+        bloch.render(title=qubit['qubit'])
+    #%%
+"""
     data={}
     mitigate_data = {}
 
@@ -240,6 +266,7 @@ if not node.parameters.simulate:
         mitigate_data[q.name]['Bloch vector'] = m_results.bloch_vector
         mitigate_data[q.name]['fidelity'] = m_results.fidelity
         mitigate_data[q.name]['trace_distance'] = m_results.trace_distance
+"""
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits],is_3d=True)
     for ax, qubit in grid_iter(grid):
