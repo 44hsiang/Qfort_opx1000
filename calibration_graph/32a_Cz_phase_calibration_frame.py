@@ -58,23 +58,25 @@ from quam_libs.lib.pulses import FluxPulse
 class Parameters(NodeParameters):
 
     qubit_pairs: Optional[List[str]] = None
-    num_averages: int = 1000
+    num_averages: int = 500
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
-    amp_range : float = 0.020
-    amp_step : float = 0.001
+    amp_range : float = 0.02
+    amp_step : float = 0.0005
     num_frames: int = 10
     load_data_id: Optional[int] = None # 92417 
     plot_raw : bool = False
     measure_leak : bool = True
 
 
+# TODO: create a file to calibrate the flux pulse length.
 node = QualibrationNode(
     name="32a_Cz_phase_calibration_frame", parameters=Parameters()
 )
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
+
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.

@@ -177,6 +177,15 @@ elif node.parameters.load_data_id is None:
                 n = results.fetch_all()[0]
                 progress_counter(n, n_runs, start_time=results.start_time)
 
+#%%  serialized program for debugging
+from qm import generate_qua_script
+
+
+
+sourceFile = open('debug.py', 'w')
+print(generate_qua_script(iq_blobs, config), file=sourceFile) 
+sourceFile.close()
+
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:

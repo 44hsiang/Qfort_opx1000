@@ -31,7 +31,7 @@ from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coef
 # %% {Node_parameters}
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = ['q2']    
-    num_averages: int = 20000
+    num_averages: int = 50000
     amplitude_factor: float = 0.4
     cryoscope_len: int = 240
     reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
@@ -39,7 +39,7 @@ class Parameters(NodeParameters):
     simulate: bool = False
     timeout: int = 100
     reset_filters: bool = True
-    load_data_id: Optional[int] = None
+    load_data_id: Optional[int] = 794
     
 node = QualibrationNode(
     name="12_Cryoscope",
@@ -310,6 +310,7 @@ if not node.parameters.simulate:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
 # %%
+%matplotlib inline
 if not node.parameters.simulate:
     if plot_process:
         ds.state.sel(qubit= qubits[0].name).plot(hue = 'axis')
@@ -330,7 +331,7 @@ if not node.parameters.simulate:
 # %%
 if not node.parameters.simulate and node.parameters.reset_filters:
         # extract the rising part of the data for analysis
-    threshold = flux_cryoscope_q.max().values*0.6 # Set the threshold value
+    threshold = flux_cryoscope_q.max().values*0.2 # Set the threshold value
     rise_index = np.argmax(flux_cryoscope_q.values > threshold) + 1
     drop_index =  len(flux_cryoscope_q) - 4
     flux_cryoscope_tp = flux_cryoscope_q.sel(time=slice(rise_index,drop_index ))
@@ -355,17 +356,17 @@ if not node.parameters.simulate and node.parameters.reset_filters:
 
     first_vals = da.sel(time=slice(0, 1)).mean().values
     final_vals = da.sel(time=slice(50, None)).mean().values
-
+    t_start = 2
     try:
         p0 = [final_vals, -1+first_vals/final_vals, 50]
-        fit, _  = curve_fit(expdecay, da.time[8:], da[8:],
+        fit, _  = curve_fit(expdecay, da.time[t_start:], da[t_start:],
                 p0=p0)
     except:
         fit = p0
         print('single exp fit failed')
     try:
         p0 = [fit[0], fit[1], 8, fit[1], fit[2]]
-        fit2, _ = curve_fit(two_expdecay, filtered_flux_cryoscope_q.time[4:], filtered_flux_cryoscope_q[4:],
+        fit2, _ = curve_fit(two_expdecay, filtered_flux_cryoscope_q.time[3:], filtered_flux_cryoscope_q[3:],
                 p0 = p0)
     except:
         fit2 = p0

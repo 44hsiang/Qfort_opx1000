@@ -23,28 +23,6 @@ g = QualibrationGraph(
         "close_other_qms": library.nodes["00_Close_other_QMs"].copy(
             name="close_other_qms",
         ),
-        "qubit_spec": library.nodes["03a_Qubit_Spectroscopy"].copy(
-            qubits = qubits,
-            flux_point_joint_or_independent="joint",
-            name="qubit_spec",
-            frequency_span_in_mhz = 100,
-            frequency_step_in_mhz= 0.25
-        ),
-        "power_rabi_x180_1": library.nodes["04_Power_Rabi"].copy(
-            qubits = qubits,
-            flux_point_joint_or_independent="joint",
-            multiplexed=multiplexed,
-            operation_x180_or_any_90="x180",
-            name="power_rabi_x180_1",
-            reset_type_thermal_or_active=reset_type_thermal_or_active,
-            num_averages = 500,
-            min_amp_factor = 0.001,
-            max_amp_factor = 1.99,
-            amp_factor_step = 0.005,
-            max_number_rabi_pulses_per_sweep=1,
-            update_x90=False,
-            state_discrimination=False,
-        ),
         "power_rabi_x180_50": library.nodes["04_Power_Rabi"].copy(
             qubits = qubits,
             flux_point_joint_or_independent="joint",
@@ -121,9 +99,7 @@ g = QualibrationGraph(
         ),
     },
     connectivity=[
-        ("close_other_qms", "qubit_spec"),
-        ("qubit_spec", "power_rabi_x180_1"),
-        ("power_rabi_x180_1", "power_rabi_x180_50"),
+        ("close_other_qms", "power_rabi_x180_50"),
         ("power_rabi_x180_50", "ramsey"),
         ("ramsey", "ramsey1"),
         ("ramsey1", "Readout_fre_opt"),

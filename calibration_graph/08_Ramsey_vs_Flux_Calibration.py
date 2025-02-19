@@ -39,11 +39,11 @@ import numpy as np
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ['q2']
+    qubits: Optional[List[str]] = None
     num_averages: int = 400
     frequency_detuning_in_mhz: float = 1.0
     min_wait_time_in_ns: int = 16
-    max_wait_time_in_ns: int = 2000
+    max_wait_time_in_ns: int = 3000
     wait_time_step_in_ns: int = 20
     flux_span: float = 0.02
     flux_step: float = 0.001

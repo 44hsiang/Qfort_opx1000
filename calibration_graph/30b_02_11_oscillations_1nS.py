@@ -54,16 +54,16 @@ from quam_libs.lib.pulses import FluxPulse
 class Parameters(NodeParameters):
 
     qubit_pairs: Optional[List[str]] = None
-    num_averages: int = 40
+    num_averages: int = 100
     max_time_in_ns: int = 128
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
     method: Literal['coarse', 'fine'] = "fine"
-    amp_range_coarse : float = 0.15
-    amp_step_coarse : float = 0.005
-    amp_range_fine : float = 0.1
+    amp_range_coarse : float = 0.2
+    amp_step_coarse : float = 0.004
+    amp_range_fine : float = 0.15
     amp_step_fine : float = 0.002
     load_data_id: Optional[int] = None  
 
@@ -140,7 +140,7 @@ def fit_rabi_chevron(ds_qp, init_length, init_detuning):
             1.0)
     fdata = np.vstack((f.ravel(),t.ravel()))
     tdata = exp_data.ravel()
-    popt, pcov = curve_fit(rabi_chevron_model, fdata, tdata, p0=initial_guess,maxfev=10000)
+    popt, pcov = curve_fit(rabi_chevron_model, fdata, tdata, p0=initial_guess,maxfev=50000)
     J = popt[0]
     f0 = popt[1]
     a = popt[2]
@@ -159,6 +159,8 @@ if node.parameters.method == "coarse":
     for qp in qubit_pairs:
         detuning = qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency - qp.qubit_target.anharmonicity
         pulse_amplitudes[qp.name] = float(np.sqrt(-detuning/qp.qubit_control.freq_vs_flux_01_quad_term))
+        if qp.name[-2:] == 'q2':
+            pulse_amplitudes[qp.name] *= 2
 else:
     for qp in qubit_pairs:
         pulse_amplitudes[qp.name] = qp.gates["Cz"].flux_pulse_control.amplitude
@@ -297,6 +299,7 @@ if not node.parameters.simulate:
     )
     
 # %%
+%matplotlib inline
 if not node.parameters.simulate:
     amplitudes = {}
     lengths = {}
@@ -345,14 +348,14 @@ if not node.parameters.simulate:
         flux_time = int(1/(2*J)*1e9)
         lengths[qp.name] = flux_time-flux_time%4+4
         zero_paddings[qp.name]=lengths[qp.name]-flux_time  
-            
-            # fig,axs = plt.subplots(1,3)
-            # im0 = axs[0].pcolormesh(t*1e9,f*1e-6,initial_model)
-            # im1 = axs[1].pcolormesh(t*1e9,f*1e-6,data_fitted)
-            # plt.colorbar(im0, ax=axs[0], orientation='vertical', label='Amplitude')
-            # plt.colorbar(im1, ax=axs[1], orientation='vertical', label='Amplitude')
-            # ds_qp.state_target.plot(ax = axs[2])
-            # plt.show()
+        if True:
+            fig,axs = plt.subplots(1,3)
+            im0 = axs[0].pcolormesh(t*1e9,f*1e-6,initial_model)
+            im1 = axs[1].pcolormesh(t*1e9,f*1e-6,data_fitted)
+            plt.colorbar(im0, ax=axs[0], orientation='vertical', label='Amplitude')
+            plt.colorbar(im1, ax=axs[1], orientation='vertical', label='Amplitude')
+            ds_qp.state_target.plot(ax = axs[2])
+            plt.show()
 # %%
 if not node.parameters.simulate:
     grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)

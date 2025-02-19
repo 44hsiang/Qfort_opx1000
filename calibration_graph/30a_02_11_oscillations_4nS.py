@@ -53,15 +53,15 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = None
-    num_averages: int = 400
-    max_time_in_ns: int = 160
+    qubit_pairs: Optional[List[str]] = ['q1_q2']
+    num_averages: int = 200
+    max_time_in_ns: int = 100
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
     amp_range : float = 0.2
-    amp_step : float = 0.006
+    amp_step : float = 0.002
     load_data_id: Optional[int] = None  
 
 node = QualibrationNode(
@@ -139,7 +139,8 @@ pulse_amplitudes = {}
 for qp in qubit_pairs:
     detuning = qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency - qp.qubit_target.anharmonicity
     pulse_amplitudes[qp.name] = float(np.sqrt(-detuning/qp.qubit_control.freq_vs_flux_01_quad_term))
-
+    if qp.name[-2:] == 'q2':
+        pulse_amplitudes[qp.name] *= 2
 # Loop parameters
 amplitudes = np.arange(1-node.parameters.amp_range, 1+node.parameters.amp_range, node.parameters.amp_step)
 times_cycles = np.arange(0, node.parameters.max_time_in_ns // 4)

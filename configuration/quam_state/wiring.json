@@ -1,4 +1,11 @@
 {
+    "network": {
+        "host": "192.168.50.220",
+        "port": null,
+        "cluster_name": "Cluster_1",
+        "octave_ips": [],
+        "octave_ports": []
+    },
     "wiring": {
         "qubits": {
             "q0": {
@@ -63,20 +70,31 @@
             }
         },
         "qubit_pairs": {
+            "q0-2": {
+                "c": {
+                    "control_qubit": "#/qubits/q2",
+                    "target_qubit": "#/qubits/q0"
+                }
+            },
             "q1-2": {
                 "c": {
                     "control_qubit": "#/qubits/q2",
                     "target_qubit": "#/qubits/q1"
                 }
+            },
+            "q2-3": {
+                "c": {
+                    "control_qubit": "#/qubits/q3",
+                    "target_qubit": "#/qubits/q2"
+                }
+            },
+            "q2-4": {
+                "c": {
+                    "control_qubit": "#/qubits/q4",
+                    "target_qubit": "#/qubits/q2"
+                }
             }
         },
         "twpa": "#/ports/mw_outputs/con1/1/8"
-    },
-    "network": {
-        "host": "192.168.50.220",
-        "port": null,
-        "cluster_name": "Cluster_1",
-        "octave_ips": [],
-        "octave_ports": []
     }
 }

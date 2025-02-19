@@ -139,8 +139,8 @@ elif node.parameters.load_data_id is None:
     # Open a quantum machine to execute the QUA program
     import time
     addr = 'TCPIP::192.168.50.12::INSTR'
-    TWPA_fre = 6.165e9
-    TWPA_gain = 0.65
+    TWPA_fre = 6.155e9
+    TWPA_gain = 1.4
     open_TWPA(addr=addr,power=True,pump_frequency=TWPA_fre,gain=TWPA_gain)
     f_span = 10e6
     frequency_sweep = np.linspace(TWPA_fre-f_span,TWPA_fre+f_span,9)
