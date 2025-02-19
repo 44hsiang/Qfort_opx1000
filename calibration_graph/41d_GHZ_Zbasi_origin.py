@@ -58,10 +58,10 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_triplets: List[List[str]] = [["qubitC2","qubitC4","qubitC3"],["qubitC2","qubitC1","qubitC3"]]# list of lists of thwe qubits making up the GHZ state
+    qubit_triplets: List[List[str]] = [["q0","q1","q2"]]# list of lists of thwe qubits making up the GHZ state
     num_shots: int = 2000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type: Literal['active', 'thermal'] = "active"
+    reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
     load_data_id: Optional[int] = None

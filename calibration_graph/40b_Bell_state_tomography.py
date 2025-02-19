@@ -366,7 +366,9 @@ if not node.parameters.simulate:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
         ds = fetch_results_as_xarray(job.result_handles, qubit_pairs, {"tomo_axis_target": [0,1,2], "tomo_axis_control": [0,1,2], "N": np.linspace(1, n_shots, n_shots)})
     else:
-        ds, machine = load_dataset(node.parameters.load_data_id)
+        node = node.load_from_id(node.parameters.load_data_id)
+        ds = node.results["ds"]
+        #ds, machine = load_dataset(node.parameters.load_data_id)
         
     node.results = {"ds": ds}
     
@@ -425,6 +427,8 @@ for qp in qubit_pairs:
     rhos = {}
     for qp in qubit_pairs:
         paulis_data[qp.name] = get_pauli_data(corrected_results_xr.sel(qubit = qp.name))
+        #paulis_data[qp.name] = get_pauli_data(results_xr.sel(qubit = qp.name))
+
         rhos[qp.name] = get_density_matrix(paulis_data[qp.name])
         
     # %%

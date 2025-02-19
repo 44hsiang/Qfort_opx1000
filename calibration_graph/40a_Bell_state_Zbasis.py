@@ -58,8 +58,8 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = None
-    num_shots: int = 2000
+    qubit_pairs: Optional[List[str]] = ['q2_q3']
+    num_shots: int = 10000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
@@ -195,7 +195,7 @@ if not node.parameters.simulate:
 # %%
 if not node.parameters.simulate:
     states = [0,1,2,3]
-
+# TODO : Try Ill-conditioned Matrices to fix the overcompensation.
     results = {}
     corrected_results = {}
     for qp in qubit_pairs:
@@ -205,7 +205,7 @@ if not node.parameters.simulate:
         results[qp.name] = np.array(results[qp.name])/node.parameters.num_shots
         
         conf_mat = qp.confusion
-        corrected_results[qp.name] = np.linalg.inv(conf_mat) @ results[qp.name]
+        #corrected_results[qp.name] = np.linalg.inv(conf_mat) @ results[qp.name]
         corrected_results[qp.name] = results[qp.name]
         print(f"{qp.name}: {corrected_results[qp.name]}")
 
