@@ -27,7 +27,7 @@ from qiskit.visualization.bloch import Bloch
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q0']
+    qubits: Optional[List[str]] = None
     num_runs: int = 10000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
@@ -41,7 +41,7 @@ class Parameters(NodeParameters):
 
 #theta,phi = random_bloch_state_uniform()
 
-node = QualibrationNode(name="100a_Random_state", parameters=Parameters())
+node = QualibrationNode(name="100a_Random_state_phase_var", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -103,7 +103,7 @@ def QuantumMemory_program(qubit,theta=theta,phi=phi):
                 qubit.align()
                 qubit.xy.play("y180",amplitude_scale = theta/np.pi)
                 qubit.xy.frame_rotation_2pi(phi/np.pi/2-0.5)
-                #wait(t)          
+                wait(t)          
                 align()
 
                 #tomography pulses
@@ -189,7 +189,7 @@ if not node.parameters.simulate:
     for q in qubits:
         print(f"qubit {q.name}")
         print(f"phi mean = {ds.sel(qubit=q.name).Bloch_phi.mean().values}")
-        print(f"phi var = {ds.sel(qubit=q.name).Bloch_phi.var().values}")
+        print(f"phi std = {ds.sel(qubit=q.name).Bloch_phi.std().values}")
     # %% plot the data
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
@@ -211,21 +211,4 @@ if not node.parameters.simulate:
     node.save()
     
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# %%

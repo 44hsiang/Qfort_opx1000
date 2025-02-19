@@ -60,7 +60,7 @@ class Parameters(NodeParameters):
 theta,phi = random_bloch_state_uniform()
 #theta,phi = 0,0
 
-node = QualibrationNode(name="100a_Quantum_Memory", parameters=Parameters())
+node = QualibrationNode(name="100a_Random_state_origin", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}

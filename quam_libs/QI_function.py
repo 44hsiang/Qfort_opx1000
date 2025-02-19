@@ -62,7 +62,7 @@ class QuantumStateAnalysis:
 
     def theta_phi(self):
         r = np.sqrt(self.x**2 + self.y**2 + self.z**2)
-        theta = np.arccos(self.z / r)
+        theta = np.arccos(self.z / 1)
         phi = np.arctan2(self.y, self.x)
         return theta, phi
 

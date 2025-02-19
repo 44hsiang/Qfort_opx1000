@@ -27,7 +27,7 @@ from qiskit.visualization.bloch import Bloch
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ['q0']
     num_runs: int = 10000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
@@ -36,7 +36,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
-    desired_state: Optional[List[float]] = [np.pi/2,0] #theta,phi
+    desired_state: Optional[List[float]] = None
 
 #theta,phi = random_bloch_state_uniform()
 
@@ -77,7 +77,12 @@ n_runs = node.parameters.num_runs  # Number of runs
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
 #theta,phi = random_bloch_state_uniform()
-theta,phi = node.parameters.desired_state[0],node.parameters.desired_state[1]
+if node.parameters.desired_state is None:
+    theta,phi = random_bloch_state_uniform()
+elif len(node.parameters.desired_state) == 2:
+    theta,phi = node.parameters.desired_state[0],node.parameters.desired_state[1]
+else:
+    raise ValueError("The desired state should be a list of two floats or None")
 t=4
 def QuantumMemory_program(qubit,theta=theta,phi=phi):
     with program() as QuantumMemory:
@@ -101,7 +106,9 @@ def QuantumMemory_program(qubit,theta=theta,phi=phi):
 
                 qubit.align()
                 qubit.xy.play("y180",amplitude_scale = theta/np.pi)
-                qubit.xy.frame_rotation_2pi(phi/np.pi/2-0.5)
+                #qubit.xy.frame_rotation_2pi(phi/np.pi/2-0.5)
+                qubit.xy.frame_rotation_2pi((phi-qubit.extras["phi_offset"])/np.pi/2-0.5)
+
                 wait(t)             
                 align()
 
@@ -177,10 +184,11 @@ if not node.parameters.simulate:
         ds = node.results["ds"]
     
     # %% {Data_analysis}
+    # TODO use the ds['Bloch_vector'] to make it simply
     node.results = {"ds": ds, "figs": {}, "results": {}}
     data={}
     mitigate_data = {}
-    print(f"ideal Bloch vector: {theta} and {phi}")
+    print(f"ideal Bloch vector: {np.rad2deg(theta):.3} and {np.rad2deg(phi):.3} in degree")
     for q in qubits:
         x, y, z = (
             np.bincount(ds.sel(qubit=q.name, axis='x').state.values).tolist(),
@@ -195,11 +203,6 @@ if not node.parameters.simulate:
 
         # construct denstiy matrix, fidelity and trace distance
         results = QuantumStateAnalysis(Bloch_vector,[theta,phi])
-        print(q.name)
-        print("raw data")
-        print(f"Bloch vector: {Bloch_vector}")
-        print(f"theta: {np.rad2deg(results.theta):.3} and phi: {np.rad2deg(results.phi):.3} in degree")
-        print(f"fidelity: {results.fidelity:.3} and trace distance: {results.trace_distance:.3}")
         data[q.name]['fidelity'] = results.fidelity
         data[q.name]['trace_distance'] = results.trace_distance        
 
@@ -220,11 +223,13 @@ if not node.parameters.simulate:
 
         # construct denstiy matrix, fidelity and trace distance
         m_results = QuantumStateAnalysis(m_Bloch_vector,[theta,phi])
-        print(f"mitigated data")
         m_Bloch_vector = [round(i,4) for i in m_Bloch_vector]
-        print(f"Mitigated Bloch vector: {m_Bloch_vector}")
-        print(f"theta: {np.rad2deg(m_results.theta):.3} and phi: {np.rad2deg(m_results.phi):.3} in degree")
-        print(f"fidelity: {m_results.fidelity:.3} and trace distance: {m_results.trace_distance:.3}")
+
+        print(q.name)
+        print("raw (mitigate) data")
+        print(f"Bloch vector: [{Bloch_vector[0]}({m_Bloch_vector[0]}),{Bloch_vector[1]}({m_Bloch_vector[1]}),{Bloch_vector[2]}({m_Bloch_vector[2]})]")
+        print(f"theta, phi: {np.rad2deg(results.theta):.3} ({np.rad2deg(m_results.theta):.3}), {np.rad2deg(results.phi):.3} ({np.rad2deg(m_results.phi):.3})")
+        print(f"fidelity, trace distance: {results.fidelity:.3} ({m_results.fidelity:.3}), {results.trace_distance:.3} ({m_results.trace_distance:.3})")
         mitigate_data[q.name]['Bloch vector'] = m_results.bloch_vector
         mitigate_data[q.name]['fidelity'] = m_results.fidelity
         mitigate_data[q.name]['trace_distance'] = m_results.trace_distance
