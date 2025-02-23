@@ -43,7 +43,7 @@ import xarray as xr
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ['q0']
     num_runs: int = 5000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
@@ -179,8 +179,6 @@ elif node.parameters.load_data_id is None:
 
 #%%  serialized program for debugging
 from qm import generate_qua_script
-
-
 
 sourceFile = open('debug.py', 'w')
 print(generate_qua_script(iq_blobs, config), file=sourceFile) 

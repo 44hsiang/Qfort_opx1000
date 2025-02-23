@@ -29,8 +29,8 @@ from qiskit.visualization.bloch import Bloch
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = None
-    num_runs: int = 10000
+    qubits: Optional[List[str]] = ['q0']
+    num_runs: int = 40000
     min_wait_time_in_ns: int = 16
     max_time_in_ns: int = 200
     wait_time_step_in_ns: int = 4

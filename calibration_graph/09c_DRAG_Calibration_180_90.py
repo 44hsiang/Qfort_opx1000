@@ -40,14 +40,14 @@ import xarray as xr
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ['q1', 'q2', 'q3']
-    num_averages: int = 1000
+    qubits: Optional[List[str]] = ['q0']
+    num_averages: int = 5000
     operation: str = "x180"
     min_amp_factor: float = -2
     max_amp_factor: float = 2.0
     amp_factor_step: float = 0.05
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
@@ -227,3 +227,5 @@ if not node.parameters.simulate:
         node.results["initial_parameters"] = node.parameters.model_dump()
         node.machine = machine
         node.save()
+
+# %%

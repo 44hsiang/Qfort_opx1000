@@ -46,15 +46,15 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = None
-    num_averages: int = 1000
+    qubits: Optional[List[str]] = ['q0']
+    num_averages: int = 200
     operation: str = "saturation"
-    operation_amplitude_factor: Optional[float] = 0.4
+    operation_amplitude_factor: Optional[float] = 0.2
     operation_len_in_ns: Optional[int] = None
-    frequency_span_in_mhz: float = 50
+    frequency_span_in_mhz: float = 400
     frequency_step_in_mhz: float = 0.1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    target_peak_width: Optional[float] = 5e6
+    target_peak_width: Optional[float] = 4e6
     arbitrary_flux_bias: Optional[float] = None
     arbitrary_qubit_frequency_in_ghz: Optional[float] = None
     simulate: bool = False
@@ -63,9 +63,7 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
     multiplexed: bool = True
 
-
 node = QualibrationNode(name="03a_Qubit_Spectroscopy", parameters=Parameters())
-
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -108,16 +106,19 @@ qubit_freqs = {q.name: q.xy.RF_frequency for q in qubits}  # for opx
 if node.parameters.arbitrary_flux_bias is not None:
     arb_flux_bias_offset = {q.name: node.parameters.arbitrary_flux_bias for q in qubits}
     detunings = {q.name: q.freq_vs_flux_01_quad_term * arb_flux_bias_offset[q.name] ** 2 for q in qubits}
+    print(f'offset_flux :{arb_flux_bias_offset}')
+
 elif node.parameters.arbitrary_qubit_frequency_in_ghz is not None:
     detunings = {
         q.name: 1e9 * node.parameters.arbitrary_qubit_frequency_in_ghz - qubit_freqs[q.name] for q in qubits
     }
     arb_flux_bias_offset = {q.name: np.sqrt(detunings[q.name] / q.freq_vs_flux_01_quad_term) for q in qubits}
-
 else:
     arb_flux_bias_offset = {q.name: 0.0 for q in qubits}
     detunings = {q.name: 0.0 for q in qubits}
 
+print(f"arb_flux_bias_offset :{arb_flux_bias_offset}")
+print(f'detunings :{detunings}')
 
 target_peak_width = node.parameters.target_peak_width
 if target_peak_width is None:
@@ -341,6 +342,9 @@ if not node.parameters.simulate:
                             q.xy.operations["x180"].amplitude = factor_pi * used_amp
                         elif factor_pi * used_amp >= limits.max_x180_wf_amplitude:
                             q.xy.operations["x180"].amplitude = limits.max_x180_wf_amplitude
+                        if node.parameters.arbitrary_flux_bias is not None:
+                            q.z.joint_offset += node.parameters.arbitrary_flux_bias
+                            print(q.z.joint_offset)
         node.results["ds"] = ds
 
         # %% {Save_results}

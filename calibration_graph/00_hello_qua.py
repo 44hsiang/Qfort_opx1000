@@ -24,7 +24,7 @@ config = machine.generate_config()
 qmm = machine.connect()
 
 qubits = machine.active_qubits
-%matplotlib qt
+#%matplotlib qt
 simulate = False
 with program() as prog:
 

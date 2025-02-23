@@ -16,6 +16,31 @@ Functions:
 import numpy as np
 from scipy.linalg import svd, sqrtm
 
+def mitigation(conf_mat,x,y,z):
+    """
+    Mitigate the measurement error using the calibration matrix.
+    Parameters:
+        qubit (int): Qubit index.
+        x (float): bincounts average in x np.array([state0,state1]).
+        y (float): bincounts average in y.
+        z (float): bincounts average in z.
+    Returns:
+        x_mitigated (float): Mitigated x component of the Bloch vector.
+        y_mitigated (float): Mitigated y component of the Bloch vector.
+        z_mitigated (float): Mitigated z component of the Bloch vector.
+    """
+    
+    x_vector = np.array([1-x,x])
+    y_vector = np.array([1-y,y])
+    z_vector = np.array([1-z,z])
+    x_mitigated = np.linalg.inv(conf_mat) @ np.array([1-x,x])
+    y_mitigated = np.linalg.inv(conf_mat) @ np.array([1-y,y])
+    z_mitigated = np.linalg.inv(conf_mat) @ np.array([1-z,z])
+    x_mitigated = x_mitigated[1]
+    y_mitigated = y_mitigated[1]
+    z_mitigated = z_mitigated[1]
+
+    return x_mitigated, y_mitigated, z_mitigated
 
 def random_bloch_state_uniform():
     # Random phi in [0, 2π]

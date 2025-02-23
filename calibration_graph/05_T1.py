@@ -34,13 +34,13 @@ import numpy as np
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ['q0']
     num_averages: int = 500
     min_wait_time_in_ns: int = 16
     max_wait_time_in_ns: int = 100000
     wait_time_step_in_ns: int = 600
     flux_point_joint_or_independent_or_arbitrary: Literal["joint", "independent", "arbitrary"] = "joint"
-    reset_type: Literal["active", "thermal"] = "thermal"
+    reset_type: Literal["active", "thermal"] = "active"
     use_state_discrimination: bool = True
     simulate: bool = False
     simulation_duration_ns: int = 2500

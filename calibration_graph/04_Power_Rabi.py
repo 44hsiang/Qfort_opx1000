@@ -40,12 +40,12 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q0', 'q1', 'q2', 'q3', 'q4']
-    num_averages: int = 300
+    qubits: Optional[List[str]] = ['q0']
+    num_averages: int = 150
     operation_x180_or_any_90: Literal["x180","y180", "x90", "-x90", "y90", "-y90"] = "x180"
     min_amp_factor: float = 0.0
     max_amp_factor: float = 1.99
-    amp_factor_step: float = 0.002
+    amp_factor_step: float = 0.005
     max_number_rabi_pulses_per_sweep: int = 1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"

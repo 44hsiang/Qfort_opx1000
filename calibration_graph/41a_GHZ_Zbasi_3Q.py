@@ -58,13 +58,13 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_triplets: List[List[str]] = [["q4","q2","q3"]]# list of lists of thwe qubits making up the GHZ state
+    qubit_triplets: List[List[str]] = [["q0","q2","q1"]]# list of lists of thwe qubits making up the GHZ state
     num_shots: int = 10000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
-    load_data_id: Optional[int] = None
+    load_data_id: Optional[int] = 812
 
 
 node = QualibrationNode(
@@ -215,7 +215,8 @@ if not node.parameters.simulate:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
         ds = fetch_results_as_xarray(job.result_handles, qubit_triplets, {"N": np.linspace(1, n_shots, n_shots)})
     else:
-        ds, machine = load_dataset(node.parameters.load_data_id)
+        node = node.load_from_id(node.parameters.load_data_id)
+        ds = node.results["ds"]
         
     node.results = {"ds": ds}
     
