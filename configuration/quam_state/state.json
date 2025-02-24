@@ -147,12 +147,12 @@
                 "depletion_time": 1000,
                 "confusion_matrix": [
                     [
-                        0.8202,
-                        0.1798
+                        0.8834,
+                        0.1166
                     ],
                     [
-                        0.1672,
-                        0.8328
+                        0.117,
+                        0.883
                     ]
                 ],
                 "GEF_frequency_shift": -100000,
@@ -191,9 +191,9 @@
                     "readout": {
                         "length": 2000,
                         "amplitude": 0.012326234261830727,
-                        "threshold": 0.0008975480892332201,
-                        "rus_exit_threshold": 0.0002485809868745248,
-                        "integration_weights_angle": 2.7129073433499666,
+                        "threshold": 0.0010892150037269703,
+                        "rus_exit_threshold": 0.0005039391125143775,
+                        "integration_weights_angle": -3.8761096763836758,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     },
                     "const": {
@@ -369,12 +369,12 @@
                 "depletion_time": 1000,
                 "confusion_matrix": [
                     [
-                        0.8324,
-                        0.1676
+                        0.8248,
+                        0.1752
                     ],
                     [
-                        0.1774,
-                        0.8226
+                        0.1732,
+                        0.8268
                     ]
                 ],
                 "GEF_frequency_shift": -300000,
@@ -413,9 +413,9 @@
                     "readout": {
                         "length": 2000,
                         "amplitude": 0.01650896347294208,
-                        "threshold": 0.0007715980817804154,
-                        "rus_exit_threshold": 8.658723918845163e-05,
-                        "integration_weights_angle": -40.70714516799422,
+                        "threshold": 0.0007524800503809967,
+                        "rus_exit_threshold": -3.116811965698341e-05,
+                        "integration_weights_angle": -47.0474093844957,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     },
                     "const": {
@@ -592,12 +592,12 @@
                 "depletion_time": 1000,
                 "confusion_matrix": [
                     [
-                        0.93,
-                        0.07
+                        0.9272,
+                        0.0728
                     ],
                     [
-                        0.1092,
-                        0.8908
+                        0.1154,
+                        0.8846
                     ]
                 ],
                 "GEF_frequency_shift": -300000,
@@ -636,9 +636,9 @@
                     "readout": {
                         "length": 2000,
                         "amplitude": 0.0204578599682783,
-                        "threshold": 0.0015396748207714382,
-                        "rus_exit_threshold": 0.0008212917024671512,
-                        "integration_weights_angle": -1.9722047603480832,
+                        "threshold": 0.0015323376846992304,
+                        "rus_exit_threshold": 0.0009115842209935206,
+                        "integration_weights_angle": -2.0919541403037467,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     },
                     "const": {
@@ -814,12 +814,12 @@
                 "depletion_time": 1000,
                 "confusion_matrix": [
                     [
-                        0.6612,
-                        0.3388
+                        0.62,
+                        0.38
                     ],
                     [
-                        0.1748,
-                        0.8252
+                        0.1558,
+                        0.8442
                     ]
                 ],
                 "GEF_frequency_shift": 100000,
@@ -858,9 +858,9 @@
                     "readout": {
                         "length": 2000,
                         "amplitude": 0.04512714510853295,
-                        "threshold": 0.00033139018049686315,
-                        "rus_exit_threshold": -0.000545601372999163,
-                        "integration_weights_angle": -25.480023667515418,
+                        "threshold": 0.0002363000049083851,
+                        "rus_exit_threshold": -0.0005068243545312548,
+                        "integration_weights_angle": -31.851957447397634,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     },
                     "const": {
@@ -1036,12 +1036,12 @@
                 "depletion_time": 1000,
                 "confusion_matrix": [
                     [
-                        0.8352,
-                        0.1648
+                        0.8418,
+                        0.1582
                     ],
                     [
-                        0.1822,
-                        0.8178
+                        0.1994,
+                        0.8006
                     ]
                 ],
                 "GEF_frequency_shift": 100000,
@@ -1080,9 +1080,9 @@
                     "readout": {
                         "length": 2000,
                         "amplitude": 0.05076885771950357,
-                        "threshold": 0.000728936775216416,
-                        "rus_exit_threshold": 0.00035965537379566945,
-                        "integration_weights_angle": -18.72817794917126,
+                        "threshold": 0.0007748890088066952,
+                        "rus_exit_threshold": 0.0004679111440876727,
+                        "integration_weights_angle": -25.120010636186823,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     },
                     "const": {
