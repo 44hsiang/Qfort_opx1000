@@ -65,8 +65,7 @@ node = QualibrationNode(name="10a_Single_Qubit_Randomized_Benchmarking", paramet
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
-machine = QuAM.load(path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 
 config = machine.generate_config()

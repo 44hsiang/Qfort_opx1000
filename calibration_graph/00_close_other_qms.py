@@ -18,7 +18,7 @@ class Parameters(NodeParameters):
 node = QualibrationNode(name="00_Close_other_QMs", parameters=Parameters())
 
 # Instantiate the QuAM class from the state file
-path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
+path = "/Users/wutsunghan/instrument_control/Qfort_opx1000/configuration/quam_state"
 machine = QuAM.load(path)
 
 # Generate the OPX and Octave configurations

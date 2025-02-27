@@ -1,0 +1,7 @@
+# python 
+*.py[cod]
+
+# MacOS
+.DS_Store
+
+debug.py
