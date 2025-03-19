@@ -86,7 +86,7 @@ def polyToParams3D(vec,printMe):
 
    R3=R[0:3,0:3]
    R3test=R3/R3[0,0]
-   print('normed \n',R3test)
+   #print('normed \n',R3test)
    s1=-R[3, 3]
    R3S=R3/s1
    (el,ec)=eig(R3S)

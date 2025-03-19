@@ -41,11 +41,11 @@ import numpy as np
 node = QualibrationNode(
     name="06_Ramsey",
     parameters=Parameters(
-        qubits=['q0'],
+        qubits=None,
         num_averages=500,
         frequency_detuning_in_mhz=0.5,
         min_wait_time_in_ns=16,
-        max_wait_time_in_ns=10000,
+        max_wait_time_in_ns=5000,
         num_time_points=500,
         log_or_linear_sweep="log",
         use_state_discrimination=False,
@@ -78,7 +78,6 @@ flux_point = node.parameters.flux_point_joint_or_independent
 detuning_signs = [-1, 1]
 
 with program() as ramsey:
-    machine.twpa_run()
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     idle_time = declare(int)
     detuning_sign = declare(int)

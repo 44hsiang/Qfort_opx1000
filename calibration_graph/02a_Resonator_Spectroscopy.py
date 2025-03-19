@@ -33,8 +33,6 @@ from qm.qua import *
 from typing import Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
-
-
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
@@ -58,8 +56,8 @@ assert not (
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
-machine = QuAM.load(path)
+#path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP
@@ -114,7 +112,6 @@ with program() as multi_res_spec:
         for i in range(num_qubits):
             I_st[i].buffer(len(dfs)).average().save(f"I{i + 1}")
             Q_st[i].buffer(len(dfs)).average().save(f"Q{i + 1}")
-
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:

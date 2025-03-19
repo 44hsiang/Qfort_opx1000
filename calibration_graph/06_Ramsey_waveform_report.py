@@ -48,8 +48,8 @@ node = QualibrationNode(
         use_state_discrimination=False,
         flux_point_joint_or_independent="joint",
         multiplexed=False,
-        simulate=False,
-        use_waveform_report=False
+        simulate=True,
+        use_waveform_report=True
     )
 )
 

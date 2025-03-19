@@ -200,7 +200,7 @@ def active_reset(
     qubit.align()
     qubit.xy.play(pi_pulse_name, condition=state)
     qubit.align()
-    with while_((I > pulse.rus_exit_threshold) & (attempts < max_attempts)):
+    with while_(broadcast.and_((I > pulse.rus_exit_threshold),(attempts < max_attempts))):
         qubit.align()
         qubit.resonator.measure("readout", qua_vars=(I, Q))
         assign(state, I > pulse.threshold)

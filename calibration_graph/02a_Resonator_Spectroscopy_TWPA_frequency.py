@@ -140,7 +140,7 @@ elif node.parameters.load_data_id is None:
     import time
     addr = 'TCPIP::192.168.50.12::INSTR'
     TWPA_fre = 6.155e9
-    TWPA_gain = 1.4
+    TWPA_gain = 1.1
     open_TWPA(addr=addr,power=True,pump_frequency=TWPA_fre,gain=TWPA_gain)
     f_span = 10e6
     frequency_sweep = np.linspace(TWPA_fre-f_span,TWPA_fre+f_span,9)
@@ -165,7 +165,7 @@ if not node.parameters.simulate:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
     else:
-        for i in range(len(gain_sweep)):
+        for i in range(len(frequency_sweep)):
             ds_ = fetch_results_as_xarray(job_[i].result_handles, qubits, {"freq": dfs})
             ds = xr.concat([ds, ds_], dim="TWPA_fre") if i != 0 else ds_
         ds = ds.assign_coords(TWPA_fre=frequency_sweep)
@@ -207,7 +207,7 @@ if not node.parameters.simulate:
 
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        for i in range(len(gain_sweep)):
+        for i in range(len(frequency_sweep)):
             (ds.sel(TWPA_fre=frequency_sweep[i]).assign_coords(freq_MHz=ds.freq / 1e6).loc[qubit].phase * 1e3).plot(ax=ax, x="freq_MHz")
         ax.set_xlabel("Resonator detuning [MHz]")
         ax.set_ylabel("Trans. phase [mrad]")

@@ -141,7 +141,7 @@ elif node.parameters.load_data_id is None:
     import time
     addr = 'TCPIP::192.168.50.12::INSTR'
     TWPA_fre = 6.165e9
-    TWPA_gain = 0.65
+    TWPA_gain = 1.1
     open_TWPA(addr=addr,power=True,pump_frequency=TWPA_fre,gain=TWPA_gain)
     g_span = 1
     gain_sweep = np.linspace(TWPA_gain-g_span,TWPA_gain+g_span,9)

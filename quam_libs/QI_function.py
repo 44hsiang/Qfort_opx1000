@@ -58,6 +58,7 @@ def random_bloch_state_uniform():
     return theta,phi
 
 class QuantumStateAnalysis:
+    
     """
     Define a class for analyzing quantum states. 
     Rho and sigma are experimental and ideal density matrices, respectively.
@@ -66,6 +67,7 @@ class QuantumStateAnalysis:
         measurement_data (list): [x, y, z] - Experimental Bloch vector components.
         ideal_data (list): [theta, phi] - Ideal Bloch vector parameters.
     """
+
     def __init__(self, measurement_data, ideal_data):
         self.x, self.y, self.z = measurement_data
         self.ideal_theta, self.ideal_phi = ideal_data

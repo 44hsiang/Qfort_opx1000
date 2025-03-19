@@ -1,5 +1,5 @@
 from quam.core import quam_dataclass
-from quam.components.channels import IQChannel, Pulse
+from quam.components.channels import IQChannel, Pulse, SingleChannel
 from quam import QuamComponent
 from .flux_line import FluxLine
 from .readout_resonator import ReadoutResonator
