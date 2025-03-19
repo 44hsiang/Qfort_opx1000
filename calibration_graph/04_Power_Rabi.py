@@ -40,8 +40,8 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q0']
-    num_averages: int = 150
+    qubits: Optional[List[str]] = None
+    num_averages: int = 100
     operation_x180_or_any_90: Literal["x180","y180", "x90", "-x90", "y90", "-y90"] = "x180"
     min_amp_factor: float = 0.0
     max_amp_factor: float = 1.99
@@ -110,7 +110,7 @@ with program() as power_rabi:
     if state_discrimination:
         state = [declare(bool) for _ in range(num_qubits)]
         state_stream = [declare_stream() for _ in range(num_qubits)]
-    a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
+    a = declare(float)  # QUA variable for the qubit drive amplitude pre-factor
     npi = declare(int)  # QUA variable for the number of qubit pulses
     count = declare(int)  # QUA variable for counting the qubit pulses
 

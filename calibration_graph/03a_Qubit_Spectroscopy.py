@@ -46,12 +46,12 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q0']
+    qubits: Optional[List[str]] = None
     num_averages: int = 200
     operation: str = "saturation"
     operation_amplitude_factor: Optional[float] = 0.2
     operation_len_in_ns: Optional[int] = None
-    frequency_span_in_mhz: float = 400
+    frequency_span_in_mhz: float = 100
     frequency_step_in_mhz: float = 0.1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     target_peak_width: Optional[float] = 4e6

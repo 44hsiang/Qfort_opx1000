@@ -31,7 +31,7 @@ from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coef
 # %% {Node_parameters}
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = ['q2']    
-    num_averages: int = 50000
+    num_averages: int = 5000
     amplitude_factor: float = 0.4
     cryoscope_len: int = 240
     reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
@@ -39,7 +39,7 @@ class Parameters(NodeParameters):
     simulate: bool = False
     timeout: int = 100
     reset_filters: bool = True
-    load_data_id: Optional[int] = 794
+    load_data_id: Optional[int] = None
     
 node = QualibrationNode(
     name="12_Cryoscope",
@@ -310,7 +310,7 @@ if not node.parameters.simulate:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
 # %%
-%matplotlib inline
+plot_process = True
 if not node.parameters.simulate:
     if plot_process:
         ds.state.sel(qubit= qubits[0].name).plot(hue = 'axis')

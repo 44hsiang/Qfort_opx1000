@@ -68,7 +68,7 @@ machine = QuAM.load()
 # delete the thread when using active reset
 if node.parameters.reset_type_thermal_or_active == "active":
     for i in machine.active_qubit_names:
-        del machine.qubits[i].xy.thread 
+        del machine.qubits[i].xy.core 
         del machine.qubits[i].resonator.thread
 
 #%%

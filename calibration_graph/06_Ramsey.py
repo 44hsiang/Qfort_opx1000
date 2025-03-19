@@ -41,11 +41,11 @@ import numpy as np
 node = QualibrationNode(
     name="06_Ramsey",
     parameters=Parameters(
-        qubits=None,
+        qubits=['q2'],
         num_averages=500,
-        frequency_detuning_in_mhz=0.5,
+        frequency_detuning_in_mhz=2,
         min_wait_time_in_ns=16,
-        max_wait_time_in_ns=5000,
+        max_wait_time_in_ns=2000,
         num_time_points=500,
         log_or_linear_sweep="log",
         use_state_discrimination=False,

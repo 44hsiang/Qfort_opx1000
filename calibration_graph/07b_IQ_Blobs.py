@@ -43,9 +43,9 @@ import xarray as xr
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ['q0']
     num_runs: int = 5000
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     operation_name: str = "readout"  # or "readout_QND"
     simulate: bool = False
@@ -65,12 +65,13 @@ u = unit(coerce_to_integer=True)
 machine = QuAM.load()
 
 #%%
+'''
 # delete the thread when using active reset
 if node.parameters.reset_type_thermal_or_active == "active":
     for i in machine.active_qubit_names:
-        del machine.qubits[i].xy.thread
+        del machine.qubits[i].xy.core
         del machine.qubits[i].resonator.thread
-
+'''
 #%%
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
@@ -96,7 +97,6 @@ operation_name = node.parameters.operation_name
 with program() as iq_blobs:
     I_g, I_g_st, Q_g, Q_g_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(num_qubits=num_qubits)
-    machine.twpa_run()
     for i, qubit in enumerate(qubits):
 
         # Bring the active qubits to the desired frequency point
