@@ -46,25 +46,21 @@ g = QualibrationGraph(
         "ro_fre_opt_vs_amp_gef": library.nodes["11b_Readout_Frequency_Optimization_G_E_F_vs_amp"].copy(
             qubits = qubits,
             flux_point_joint_or_independent="joint",
-            multiplexed=multiplexed,
             name="ro_fre_opt_vs_amp_gef"
         ),
         "power_rabi_ef": library.nodes["11c_Power_Rabi_E_to_F"].copy(
             qubits = qubits,
             flux_point_joint_or_independent="joint",
-            multiplexed=multiplexed,
             name="power_rabi_ef",
         ),
         "ro_fre_opt_gef": library.nodes["11d_Readout_Frequency_Optimization_G_E_F"].copy(
             qubits = qubits,
             flux_point_joint_or_independent="joint",
-            multiplexed=multiplexed,
             name="ro_fre_opt_gef",
         ),
         "IQ_blob_thermal_gef": library.nodes["11e_IQ_Blobs_G_E_F"].copy(
             qubits = qubits,
             flux_point_joint_or_independent="joint",
-            multiplexed=multiplexed,
             name="IQ_blob_thermal",
         )
     },

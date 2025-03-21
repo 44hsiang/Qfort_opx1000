@@ -53,9 +53,9 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = None
+    qubit_pairs: Optional[List[str]] = ['q0_q2','q1_q2',"q2_q3","q2_q4"]
     num_averages: int = 100
-    max_time_in_ns: int = 128
+    max_time_in_ns: int = 100
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
@@ -181,7 +181,7 @@ with program() as CPhase_Oscillations:
     t = declare(int)  # QUA variable for the flux pulse segment index
     t_inner = declare(int)
     idx = declare(int)
-    amp = declare(fixed)    
+    amp = declare(float)    
     n = declare(int)
     n_st = declare_stream()
     state_control = [declare(int) for _ in range(num_qubit_pairs)]
