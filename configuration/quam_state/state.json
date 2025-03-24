@@ -127,7 +127,7 @@
                         "__class__": "quam.components.pulses.DragCosinePulse"
                     }
                 },
-                "intermediate_frequency": -33633748.84148849,
+                "intermediate_frequency": -34538949.30318568,
                 "thread": "a",
                 "opx_output": "#/wiring/qubits/q0/xy/opx_output",
                 "__class__": "quam.components.channels.MWChannel"
@@ -147,12 +147,12 @@
                 "depletion_time": 1000,
                 "confusion_matrix": [
                     [
-                        0.8712,
-                        0.1288
+                        0.8164,
+                        0.1836
                     ],
                     [
-                        0.1348,
-                        0.8652
+                        0.1276,
+                        0.8724
                     ]
                 ],
                 "GEF_frequency_shift": -500000,
@@ -191,9 +191,9 @@
                     "readout": {
                         "length": 2000,
                         "amplitude": 0.015326234261830727,
-                        "threshold": 0.001076220071280254,
-                        "rus_exit_threshold": 8.858103632122254e-05,
-                        "integration_weights_angle": -22.662929918357456,
+                        "threshold": 0.0009791912809029894,
+                        "rus_exit_threshold": 0.00011560388455829965,
+                        "integration_weights_angle": -28.929525753110937,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     },
                     "const": {
@@ -203,8 +203,6 @@
                     }
                 },
                 "intermediate_frequency": -301877100.0,
-                "thread": "a",
-                "core": "a",
                 "opx_input": "#/wiring/qubits/q0/rr/opx_input",
                 "time_of_flight": 376,
                 "opx_output": "#/wiring/qubits/q0/rr/opx_output",
@@ -213,14 +211,14 @@
             "anharmonicity": 218000000,
             "freq_vs_flux_01_quad_term": -46680569466.19209,
             "T1": 1.3562484247398502e-05,
-            "T2ramsey": 5.4339386098366944e-06,
+            "T2ramsey": 6.591346339036192e-06,
             "phi0_current": 23.389736101819018,
             "phi0_voltage": 0.4677947220363804,
             "GEF_frequency_shift": -500000,
             "chi": -300000.0,
             "grid_location": "0,0",
             "extras": {
-                "phi_offset": 1.3267324631973592
+                "phi_offset": 0.1118291858162889
             }
         },
         "q1": {
@@ -350,7 +348,7 @@
                         "__class__": "quam.components.pulses.DragCosinePulse"
                     }
                 },
-                "intermediate_frequency": -39243762.1925117,
+                "intermediate_frequency": -38192858.175842345,
                 "thread": "b",
                 "opx_output": "#/wiring/qubits/q1/xy/opx_output",
                 "__class__": "quam.components.channels.MWChannel"
@@ -370,12 +368,12 @@
                 "depletion_time": 1000,
                 "confusion_matrix": [
                     [
-                        0.834,
-                        0.166
+                        0.8346,
+                        0.1654
                     ],
                     [
-                        0.1692,
-                        0.8308
+                        0.2002,
+                        0.7998
                     ]
                 ],
                 "GEF_frequency_shift": -500000,
@@ -414,9 +412,9 @@
                     "readout": {
                         "length": 2000,
                         "amplitude": 0.01650896347294208,
-                        "threshold": 0.0004994824996987133,
-                        "rus_exit_threshold": -0.0002533518929658623,
-                        "integration_weights_angle": -21.802552572510287,
+                        "threshold": 0.0004946993671374166,
+                        "rus_exit_threshold": -0.0002776927664691052,
+                        "integration_weights_angle": -28.072095172677876,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     },
                     "const": {
@@ -427,7 +425,6 @@
                 },
                 "intermediate_frequency": -174968115.0,
                 "thread": "b",
-                "core": "b",
                 "opx_input": "#/wiring/qubits/q1/rr/opx_input",
                 "time_of_flight": 376,
                 "opx_output": "#/wiring/qubits/q1/rr/opx_output",
@@ -436,7 +433,7 @@
             "anharmonicity": 216500000,
             "freq_vs_flux_01_quad_term": -97386847747.88754,
             "T1": 1.5145291142392509e-05,
-            "T2ramsey": 5.4339386098366944e-06,
+            "T2ramsey": 4.006993597460759e-06,
             "phi0_current": 15.852713684065394,
             "phi0_voltage": 0.3170542736813079,
             "GEF_frequency_shift": -500000,
@@ -574,7 +571,7 @@
                         "__class__": "quam.components.pulses.DragCosinePulse"
                     }
                 },
-                "intermediate_frequency": 269545776.01035744,
+                "intermediate_frequency": 269372506.936554,
                 "thread": "c",
                 "opx_output": "#/wiring/qubits/q2/xy/opx_output",
                 "__class__": "quam.components.channels.MWChannel"
@@ -594,12 +591,12 @@
                 "depletion_time": 1000,
                 "confusion_matrix": [
                     [
-                        0.8096,
-                        0.1904
+                        0.8386,
+                        0.1614
                     ],
                     [
-                        0.166,
-                        0.834
+                        0.176,
+                        0.824
                     ]
                 ],
                 "GEF_frequency_shift": -300000,
@@ -638,9 +635,9 @@
                     "readout": {
                         "length": 2000,
                         "amplitude": 0.0204578599682783,
-                        "threshold": 0.0010474854936379618,
-                        "rus_exit_threshold": 0.0006116000472796571,
-                        "integration_weights_angle": -1.9921661504417134,
+                        "threshold": 0.0011133345882004184,
+                        "rus_exit_threshold": 0.000490498422384793,
+                        "integration_weights_angle": -8.266394615180356,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     },
                     "const": {
@@ -651,7 +648,6 @@
                 },
                 "intermediate_frequency": -40816900.0,
                 "thread": "c",
-                "core": "c",
                 "opx_input": "#/wiring/qubits/q2/rr/opx_input",
                 "time_of_flight": 376,
                 "opx_output": "#/wiring/qubits/q2/rr/opx_output",
@@ -660,7 +656,7 @@
             "anharmonicity": 218250000,
             "freq_vs_flux_01_quad_term": -20613745301.77706,
             "T1": 1.2234802605918541e-05,
-            "T2ramsey": 5.4339386098366944e-06,
+            "T2ramsey": 5.134926749308937e-07,
             "phi0_current": 17.276318209512496,
             "phi0_voltage": 0.34552636419024996,
             "GEF_frequency_shift": -350000,
@@ -817,12 +813,12 @@
                 "depletion_time": 1000,
                 "confusion_matrix": [
                     [
-                        0.7168,
-                        0.2832
+                        0.7578,
+                        0.2422
                     ],
                     [
-                        0.2456,
-                        0.7544
+                        0.2632,
+                        0.7368
                     ]
                 ],
                 "GEF_frequency_shift": 100000,
@@ -861,9 +857,9 @@
                     "readout": {
                         "length": 2000,
                         "amplitude": 0.0412714510853295,
-                        "threshold": -0.0006774723425708344,
-                        "rus_exit_threshold": -0.0011995044122579722,
-                        "integration_weights_angle": -18.88976407040888,
+                        "threshold": -0.0005974460000328903,
+                        "rus_exit_threshold": -0.001104142651464127,
+                        "integration_weights_angle": -18.915594410247465,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     },
                     "const": {
@@ -873,8 +869,6 @@
                     }
                 },
                 "intermediate_frequency": 126089463.0,
-                "thread": "d",
-                "core": "d",
                 "opx_input": "#/wiring/qubits/q3/rr/opx_input",
                 "time_of_flight": 376,
                 "opx_output": "#/wiring/qubits/q3/rr/opx_output",
@@ -1040,12 +1034,12 @@
                 "depletion_time": 1000,
                 "confusion_matrix": [
                     [
-                        0.7776,
-                        0.2224
+                        0.7732,
+                        0.2268
                     ],
                     [
-                        0.2646,
-                        0.7354
+                        0.2314,
+                        0.7686
                     ]
                 ],
                 "GEF_frequency_shift": -300000,
@@ -1084,9 +1078,9 @@
                     "readout": {
                         "length": 2000,
                         "amplitude": 0.05576885771950357,
-                        "threshold": 0.000519482471752108,
-                        "rus_exit_threshold": 9.351028315313929e-05,
-                        "integration_weights_angle": -18.72321847974635,
+                        "threshold": 0.0004769054478939967,
+                        "rus_exit_threshold": 0.0001512804001240418,
+                        "integration_weights_angle": -18.72583366296714,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     },
                     "const": {
@@ -1096,8 +1090,6 @@
                     }
                 },
                 "intermediate_frequency": 348208731.0,
-                "thread": "e",
-                "core": "e",
                 "opx_input": "#/wiring/qubits/q4/rr/opx_input",
                 "time_of_flight": 376,
                 "opx_output": "#/wiring/qubits/q4/rr/opx_output",
