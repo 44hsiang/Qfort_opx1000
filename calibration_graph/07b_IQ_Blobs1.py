@@ -69,7 +69,7 @@ machine = QuAM.load()
 if node.parameters.reset_type_thermal_or_active == "active":
     for i in machine.active_qubit_names:
         del machine.qubits[i].xy.core 
-        del machine.qubits[i].resonator.thread
+        del machine.qubits[i].resonator.core
 
 #%%
 # Generate the OPX and Octave configurations
@@ -78,15 +78,12 @@ config = machine.generate_config()
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
 
-
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
 else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
 num_qubits = len(qubits)
-
-
 
 # %% {QUA_program}
 n_runs = node.parameters.num_runs  # Number of runs

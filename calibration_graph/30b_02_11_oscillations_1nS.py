@@ -53,7 +53,7 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ['q0_q2','q1_q2',"q2_q3","q2_q4"]
+    qubit_pairs: Optional[List[str]] = None
     num_averages: int = 100
     max_time_in_ns: int = 100
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
@@ -65,7 +65,7 @@ class Parameters(NodeParameters):
     amp_step_coarse : float = 0.004
     amp_range_fine : float = 0.15
     amp_step_fine : float = 0.002
-    load_data_id: Optional[int] = None  
+    load_data_id: Optional[int] = 1582  
 
 node = QualibrationNode(
     name="30b_02_11_oscillations_1nS", parameters=Parameters()
@@ -76,8 +76,7 @@ assert not (node.parameters.simulate and node.parameters.load_data_id is not Non
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
-machine = QuAM.load(path)
+machine = QuAM.load()
 
 # Get the relevant QuAM components
 if node.parameters.qubit_pairs is None or node.parameters.qubit_pairs == "":
@@ -275,10 +274,13 @@ if not node.parameters.simulate:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
         ds = fetch_results_as_xarray(job.result_handles, qubit_pairs, {"time": times_ns, "amp": amplitudes})
     else:
+        '''
         ds, loaded_machine = load_dataset(node.parameters.load_data_id)
         if loaded_machine is not None:
             machine = loaded_machine
-
+        '''
+        node = node.load_from_id(node.parameters.load_data_id)
+        ds = node.results["ds"]
     node.results = {"ds": ds}
 
 
@@ -299,7 +301,7 @@ if not node.parameters.simulate:
     )
     
 # %%
-%matplotlib inline
+
 if not node.parameters.simulate:
     amplitudes = {}
     lengths = {}

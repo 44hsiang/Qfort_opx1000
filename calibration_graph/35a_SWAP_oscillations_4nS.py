@@ -53,15 +53,15 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ['q2-q4']
+    qubit_pairs: Optional[List[str]] = ['q0_q2']
     num_averages: int = 100
     max_time_in_ns: int = 160
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type: Literal['active', 'thermal'] = "active"
+    reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
-    amp_range : float = 0.05
-    amp_step : float = 0.001
+    amp_range : float = 0.5
+    amp_step : float = 0.005
     load_data_id: Optional[int] = None  
 
 node = QualibrationNode(
@@ -139,13 +139,14 @@ for qp in qubit_pairs:
     pulse_amplitudes[qp.name] = float(np.sqrt(-detuning/qp.qubit_control.freq_vs_flux_01_quad_term))
 
 # Loop parameters
-amplitudes = np.arange(1-node.parameters.amp_range, 1+node.parameters.amp_range, node.parameters.amp_step)
+amplitudes = 0.09/0.1*np.arange(1-node.parameters.amp_range, 1+node.parameters.amp_range, node.parameters.amp_step)
+amplitudes = np.arange(0.02,0.2,0.005)
 times_cycles = np.arange(0, node.parameters.max_time_in_ns // 4)
 
 with program() as CPhase_Oscillations:
     t = declare(int)  # QUA variable for the flux pulse segment index
     idx = declare(int)
-    amp = declare(fixed)    
+    amp = declare(float)    
     n = declare(int)
     n_st = declare_stream()
     state_control = [declare(int) for _ in range(num_qubit_pairs)]
@@ -187,7 +188,8 @@ with program() as CPhase_Oscillations:
 
                     # play the flux pulse
                     with if_(t > 0):
-                        qp.qubit_control.z.play('const', duration=t, amplitude_scale = pulse_amplitudes[qp.name] / qp.qubit_control.z.operations['const'].amplitude * amp)
+                        #qp.qubit_control.z.play('const', duration=t, amplitude_scale = pulse_amplitudes[qp.name] / qp.qubit_control.z.operations['const'].amplitude * amp)
+                        qp.qubit_control.z.play('const', duration=t, amplitude_scale = amp)
                     
                     # wait for the flux pulse to end and some extra time
                     for qubit in [qp.qubit_control, qp.qubit_target]:

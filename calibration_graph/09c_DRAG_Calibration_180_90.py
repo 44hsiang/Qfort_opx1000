@@ -40,7 +40,7 @@ import xarray as xr
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ['q0']
+    qubits: Optional[List[str]] = None
     num_averages: int = 5000
     operation: str = "x180"
     min_amp_factor: float = -2
@@ -98,7 +98,7 @@ with program() as drag_calibration:
     I, _, Q, _, n, n_st = qua_declaration(num_qubits=num_qubits)
     state = [declare(bool) for _ in range(num_qubits)]
     state_stream = [declare_stream() for _ in range(num_qubits)]
-    a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
+    a = declare(float)  # QUA variable for the qubit drive amplitude pre-factor
     npi = declare(int)  # QUA variable for the number of qubit pulses
     count = declare(int)  # QUA variable for counting the qubit pulses
 
