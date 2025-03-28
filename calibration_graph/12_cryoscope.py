@@ -30,7 +30,7 @@ from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coef
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ['q2']    
+    qubits: Optional[List[str]] = ['q4']    
     num_averages: int = 5000
     amplitude_factor: float = 0.4
     cryoscope_len: int = 240
@@ -53,8 +53,8 @@ node = QualibrationNode(
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
-machine = QuAM.load(path)
+#path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
+machine = QuAM.load()
 # machine = QuAM.load()
 # Get the relevant QuAM components
 if node.parameters.qubits is None:

@@ -53,14 +53,14 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ['q1_q2']
-    num_averages: int = 200
+    qubit_pairs: Optional[List[str]] = ['q2_q4']
+    num_averages: int = 100
     max_time_in_ns: int = 100
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
-    amp_range : float = 0.2
+    amp_range : float = 0.4
     amp_step : float = 0.002
     load_data_id: Optional[int] = None  
 
@@ -74,8 +74,8 @@ assert not (node.parameters.simulate and node.parameters.load_data_id is not Non
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 
-path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
-machine = QuAM.load(path)
+#path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
+machine = QuAM.load()
 
 # Get the relevant QuAM components
 if node.parameters.qubit_pairs is None or node.parameters.qubit_pairs == "":
@@ -140,6 +140,8 @@ for qp in qubit_pairs:
     detuning = qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency - qp.qubit_target.anharmonicity
     pulse_amplitudes[qp.name] = float(np.sqrt(-detuning/qp.qubit_control.freq_vs_flux_01_quad_term))
     if qp.name[-2:] == 'q2':
+        pulse_amplitudes[qp.name] *= 2
+    elif qp.name[-2:] == 'q4':
         pulse_amplitudes[qp.name] *= 2
 # Loop parameters
 amplitudes = np.arange(1-node.parameters.amp_range, 1+node.parameters.amp_range, node.parameters.amp_step)
