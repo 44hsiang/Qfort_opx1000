@@ -43,15 +43,14 @@ import xarray as xr
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q0']
+    qubits: Optional[List[str]] = ['q0', 'q1', 'q2', 'q3', 'q4']
     num_runs: int = 5000
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     operation_name: str = "readout"  # or "readout_QND"
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-    load_data_id: Optional[int] = None
     multiplexed: bool = True
 
 

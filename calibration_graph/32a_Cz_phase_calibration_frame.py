@@ -64,8 +64,8 @@ class Parameters(NodeParameters):
     simulate: bool = False
     timeout: int = 100
     amp_range : float = 0.02
-    amp_step : float = 0.0005
-    num_frames: int = 10
+    amp_step : float = 0.00025
+    num_frames: int = 20
     load_data_id: Optional[int] = None # 92417 
     plot_raw : bool = False
     measure_leak : bool = True
@@ -82,8 +82,7 @@ assert not (node.parameters.simulate and node.parameters.load_data_id is not Non
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
-machine = QuAM.load(path)
+machine = QuAM.load()
 # Get the relevant QuAM components
 if node.parameters.qubit_pairs is None or node.parameters.qubit_pairs == "":
     qubit_pairs = machine.active_qubit_pairs

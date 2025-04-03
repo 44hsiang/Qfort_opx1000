@@ -58,13 +58,13 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_triplets: List[List[str]] = [["q0","q2","q1"]]# list of lists of thwe qubits making up the GHZ state
+    qubit_triplets: List[List[str]] = [["q0","q2","q1"]]# list of lists of the qubits making up the GHZ state
     num_shots: int = 10000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
-    load_data_id: Optional[int] = 812
+    load_data_id: Optional[int] = None
 
 
 node = QualibrationNode(
@@ -76,8 +76,7 @@ assert not (node.parameters.simulate and node.parameters.load_data_id is not Non
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
-machine = QuAM.load(path)
+machine = QuAM.load()
 
 # Get the relevant QuAM components
 
@@ -236,7 +235,6 @@ if not node.parameters.simulate:
             conf_mat = np.kron(conf_mat, q.resonator.confusion_matrix)
         # conf_mat = qp.confusion
         corrected_results[qubit_triplet.name] = np.linalg.inv(conf_mat) @ results[qubit_triplet.name]
-        # corrected_results[qubit_triplet.name] = results[qubit_triplet.name]
 
         corrected_results[qubit_triplet.name] = np.where(corrected_results[qubit_triplet.name] < 0, 0, corrected_results[qubit_triplet.name])
         corrected_results[qubit_triplet.name] = corrected_results[qubit_triplet.name]/np.sum(corrected_results[qubit_triplet.name])

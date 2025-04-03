@@ -64,8 +64,8 @@ node = QualibrationNode(name="02b_Resonator_Spectroscopy_vs_Flux", parameters=Pa
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
-machine = QuAM.load(path)
+# path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
+machine = QuAM.load()
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
