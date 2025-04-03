@@ -320,7 +320,6 @@ if not node.parameters.simulate:
     node.results["analyze_results"] = analyze_results
     # %% {Plotting}
     # ellipsoid function
-    %matplotlib inline
     u,v = np.linspace(0, 2 * np.pi, 100), np.linspace(0, np.pi, 100)
     x = np.outer(np.cos(u), np.sin(v))
     y = np.outer(np.sin(u), np.sin(v))

@@ -35,16 +35,16 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = ['q0']
     num_runs: int = 10000
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    interaction_time_ns: int = 4
-    simulate: bool = True
+    interaction_time_ns: int = 0
+    simulate: bool = False
     simulation_duration_ns: int = 1000
     timeout: int = 100
-    load_data_id: Optional[int] = None
+    load_data_id: Optional[int] = 1764
     multiplexed: bool = False
     number_of_points: int = 1
-    repeats: int = 10
+    repeats: int = 200
 
 if Parameters().load_data_id is not None:
     node  = QualibrationNode(name=f"{Parameters().load_data_id}_analyze_again", parameters=Parameters())
@@ -176,6 +176,7 @@ def QuantumMemory_program(qubit,repeat):
                 align()
                 baked_signals[0].run() 
                 align()
+                wait(interaction_time//4+13+13)
                 #tomography pulses
                 with if_(tomo_axis == 0):
                     qubit.xy.play("y90")
@@ -267,7 +268,7 @@ if not node.parameters.simulate:
     # %% {Data_analysis}
     node.results = {"ds": ds, "figs": {}, "results": {}}
     node.results["ds"] = ds
-    filter_data = False
+    filter_data = True
     analyze_results = {}
     data_results = {}
     for q in qubits:
@@ -275,11 +276,18 @@ if not node.parameters.simulate:
         theta_diff = (ds.theta.values-ds.sel(qubit=q.name).Bloch_theta.values)
         phi_diff = angle_error_min(ds.phi.values,ds.sel(qubit=q.name).Bloch_phi.values)
         phi_diff_sort_index = np.argsort(np.abs(phi_diff))
+
+        phi_full_stats = [phi_diff.mean(),phi_diff.std()]
+        theta_full_stats = [theta_diff.mean(),theta_diff.std()]
         filter_index_sd = np.array([])
         # TODO : make short distance index iterable
-        for j in range(2): # 1 => only phase 2 => phase and short distance
+        for j in range(1): # 1 => only phase 2 => phase and short distance
             if filter_data:
-                delete_index = np.union1d(filter_index_sd,phi_diff_sort_index[100:])
+                nn = 1
+                #delete_index = np.union1d(filter_index_sd,phi_diff_sort_index[15:])
+                delete_index_phi = np.where((phi_diff > data_thershold(phi_full_stats,nn)[0]) | (phi_diff < data_thershold(phi_full_stats,nn)[1]))[0]
+                delete_index_theta = np.where((theta_diff > data_thershold(theta_full_stats,nn)[0]) | (theta_diff < data_thershold(theta_full_stats,nn)[1]))[0]
+                delete_index = np.union1d(delete_index_phi,delete_index_theta)
                 filter_index = np.delete(ds.n_points,delete_index.astype(int))
             else:
                 filter_index = np.arange(n_points*repeats)
@@ -287,26 +295,24 @@ if not node.parameters.simulate:
             theta_stats =[theta_diff[filter_index].mean(),theta_diff[filter_index].std()]
             phi_stats = [phi_diff[filter_index].mean(),phi_diff[filter_index].std()]
             # fit ellipsoid
-            x = ds.sel(qubit=q.name).Bloch_vector_x.values[filter_index]
-            y = ds.sel(qubit=q.name).Bloch_vector_y.values[filter_index]
-            z = ds.sel(qubit=q.name).Bloch_vector_z.values[filter_index]
-            theta_data = ds.theta.values[filter_index]
-            phi_data = ds.phi.values[filter_index]    
-            param = ls_ellipsoid(x,y,z)
+            x = ds.sel(qubit=q.name).Bloch_vector_x.values
+            y = ds.sel(qubit=q.name).Bloch_vector_y.values
+            z = ds.sel(qubit=q.name).Bloch_vector_z.values
+
+            param = ls_ellipsoid(x[filter_index],y[filter_index],z[filter_index])
             center,axes,R = polyToParams3D(param,False)
 
             # elliptcal parameters define in the constraint function
             shortest_distance = np.array([])
-            for i in range(n_points*len(filter_index)):
+            for i in range(repeats):
                 x0, y0, z0 = x[i], y[i], z[i]
                 data_point = np.array([x0, y0, z0])
                 cons = {'type': 'eq', 'fun': constraint} # constraint function
                 result = minimize(distance_eq, data_point, constraints=[cons]) # minimize the distance
                 shortest_distance = np.append(shortest_distance,np.abs(result.fun)*np.sign(constraint((x0, y0, z0 ))))
-
-            fidelity_data = [QuantumStateAnalysis([x[i],y[i],z[i]],[theta_data[i],phi_data[i]]).fidelity for i in range(len(filter_index))]
-            trace_distance_data = [QuantumStateAnalysis([x[i],y[i],z[i]],[theta_data[i],phi_data[i]]).trace_distance for i in range(len(filter_index))]
-            filter_index_sd = np.where(np.abs(shortest_distance)>data_thershold([shortest_distance.mean(),shortest_distance.std()],2)[0])
+            fidelity_data = [QuantumStateAnalysis([x[i],y[i],z[i]],[ds.theta.values[i],ds.phi.values[i]]).fidelity for i in range(repeats)]
+            trace_distance_data = [QuantumStateAnalysis([x[i],y[i],z[i]],[ds.theta.values[i],ds.phi.values[i]]).trace_distance for i in range(repeats)]
+            filter_index_sd = np.where(np.abs(shortest_distance)>data_thershold([shortest_distance.mean(),shortest_distance.std()],1)[0])
 
         analyze_results[q.name] = {
             "center": center, 
@@ -325,7 +331,7 @@ if not node.parameters.simulate:
                                 "shortest_distance":shortest_distance,
                                 "fidelity":fidelity_data
                                 }
-        print(f"qubit {q.name} has {len(filter_index)} data points")
+        print(f"qubit {q.name} use {len(filter_index)} data points to fit the ellipsoid")
         from pprint import pprint
         pprint(analyze_results)
     node.results["analyze_results"] = analyze_results
@@ -346,9 +352,9 @@ if not node.parameters.simulate:
         ellipsoid_points_ += analyze_results[qubit['qubit']]['center'].reshape(-1, 1)
         x_ellipsoid_, y_ellipsoid_, z_ellipsoid_ = ellipsoid_points_.reshape(3, *x_ellipsoid_.shape)
         ax.scatter(
-            ds.sel(qubit =qubit['qubit']).Bloch_vector_x.values[filter_index],
-            ds.sel(qubit =qubit['qubit']).Bloch_vector_y.values[filter_index],
-            ds.sel(qubit =qubit['qubit']).Bloch_vector_z.values[filter_index], 
+            ds.sel(qubit =qubit['qubit']).Bloch_vector_x.values,
+            ds.sel(qubit =qubit['qubit']).Bloch_vector_y.values,
+            ds.sel(qubit =qubit['qubit']).Bloch_vector_z.values, 
             label="Data points", color="black", s=2
             )
         ax.plot_wireframe(x, y, z, color="blue", alpha=0.05, label=" Bloch sphere")
@@ -359,8 +365,11 @@ if not node.parameters.simulate:
     # plot the shortest distance
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        ax.plot(data_results[qubit['qubit']]['shortest_distance'],'.',label='distance')
-        ax.legend()
+        ax.plot(data_results[qubit['qubit']]['shortest_distance'],'.')
+        ax.plot(filter_index,data_results[qubit['qubit']]['shortest_distance'][filter_index],'r.',label='fitting data')
+
+        #ax.legend(loc='outside upper right')
+        ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
         ax.set_xlabel("data points")
         ax.set_ylabel("error(arb.)")
         #ax.set_ylim(-0.02,0.02)
@@ -370,29 +379,28 @@ if not node.parameters.simulate:
     # plot the theta and phi error
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        ax.plot(data_results[qubit['qubit']]['phi'],'.',label='fun')
-        #ax.plot(ds.sel(qubit=q.name).Bloch_phi.values-ds.phi.values,'.',label='direct')
-        ax.plot(data_results[qubit['qubit']]['theta'],'.',label='theta')
+        ax.plot(phi_diff,color='#6EC1E4',marker='.',linestyle='None',label='phi')
+        ax.plot(theta_diff,color='#A8E6A3',marker='.',linestyle='None',label='theta')
+        ax.plot(filter_index,data_results[qubit['qubit']]['phi'],color='blue',marker='*',linestyle='None',label='fitting phi')
+        ax.plot(filter_index,data_results[qubit['qubit']]['theta'],color='green',marker='*',linestyle='None',label='fitting theta')
         
-        ax.legend()
+        ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
         ax.set_xlabel("data points")
         ax.set_ylim(-np.pi,np.pi)
-        #ax.set_xlim(0,50)
         ax.set_ylabel("error(rad)")
         ax.set_title(f"{qubit['qubit']} phase and theta error")
-
     node.results["figure_error"] = grid.fig
 
 # %% check the random theta and phi
 
 bins, x_labels = generate_bins_labels()
 figure = plt.figure(figsize=(8, 5))
-plot_histogram(theta_data, 'Theta', 221, bins, x_labels,ylim=55)
-plot_histogram(ds.theta, 'Theta', 223, bins, x_labels,ylim=55)
-plot_histogram(phi_data, 'Phi', 222, bins, x_labels,ylim=35)
+plot_histogram(ds.theta.values[filter_index], 'Theta', 221, bins, x_labels,ylim=40)
+plot_histogram(ds.theta.values, 'Theta', 223, bins, x_labels,ylim=55)
+plot_histogram(ds.phi.values[filter_index], 'Phi', 222, bins, x_labels,ylim=40)
 plot_histogram(ds.phi, 'Phi', 224, bins, x_labels,ylim=35)
 
-plt.suptitle(f"id = {load_data_id} total count = {len(theta_data)}")
+plt.suptitle(f"id = {load_data_id} total count = {len(filter_index)}")
 plt.tight_layout()
 node.results["figure_phi_theta_distrbution"] = figure
 
@@ -409,5 +417,3 @@ if not node.parameters.simulate:
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
-
-3# %%
