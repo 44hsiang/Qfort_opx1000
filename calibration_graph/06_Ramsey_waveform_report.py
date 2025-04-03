@@ -32,6 +32,7 @@ from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm.qua import *
+from qm import SimulationConfig
 import matplotlib.pyplot as plt
 
 
@@ -76,7 +77,6 @@ flux_point = node.parameters.flux_point_joint_or_independent
 detuning_signs = [-1, 1]
 
 with program() as ramsey:
-    machine.twpa_run()
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     idle_time = declare(int)
     detuning_sign = declare(int)
@@ -149,10 +149,15 @@ with program() as ramsey:
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
-    samples, fig = simulate_and_plot(qmm, config, ramsey, node.parameters)
-    node.results = {"figure": fig}
-    node.machine = machine
-    node.save()
+    simulation_config = SimulationConfig(duration=10000)
+    job = qmm.simulate(config,ramsey, simulation_config)
+    samples = job.get_simulated_samples()
+    waveform_report = job.get_simulated_waveform_report()
+    waveform_report.create_plot(samples,plot=True)
+    #samples, fig = simulate_and_plot(qmm, config, ramsey, node.parameters)
+    #node.results = {"figure": fig}
+    #node.machine = machine
+    #node.save()
 
 elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:

@@ -13,6 +13,7 @@ from qualang_tools.analysis.discriminator import two_state_discriminator
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
+from qualang_tools.loops import from_array
 from qm import SimulationConfig
 from qm.qua import *
 from typing import Literal, Optional, List
@@ -29,7 +30,7 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = ['q0']
     num_runs: int = 10000
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = True
     simulation_duration_ns: int = 2500
@@ -53,8 +54,8 @@ machine = QuAM.load()
 # delete the thread when using active reset
 if node.parameters.reset_type_thermal_or_active == "active":
     for i in machine.active_qubit_names:
-        del machine.qubits[i].xy.thread
-        del machine.qubits[i].resonator.thread
+        del machine.qubits[i].xy.core
+        del machine.qubits[i].resonator.core
 
 #%%
 # Generate the OPX and Octave configurations
@@ -70,7 +71,8 @@ if node.parameters.qubits is None or node.parameters.qubits == "":
 else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
 num_qubits = len(qubits)
-
+noise_qubit = machine.qubits['q2']
+iswap_point = machine.qubit_pairs['q0_q2'].gates['iSWAP'].flux_pulse_control.amplitude
 # %% {QUA_program}
 n_runs = node.parameters.num_runs  # Number of runs
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
@@ -81,45 +83,43 @@ elif len(node.parameters.desired_state) == 2:
     theta,phi = node.parameters.desired_state[0],node.parameters.desired_state[1]
 else:
     raise ValueError("The desired state should be a list of two floats or None")
-t=4
+t_delay = np.arange(16,1000,4)//4
+
 def QuantumMemory_program(qubit,theta=theta,phi=phi):
     with program() as QuantumMemory:
         I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=1)
         state = [declare(int) for _ in range(1)]
         state_st = [declare_stream() for _ in range(1)]
         tomo_axis = declare(int)
-
+        t = declare(int)
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
         with for_(n, 0, n < n_runs, n + 1):
             save(n, n_st)
-            with for_(tomo_axis, 0, tomo_axis < 3, tomo_axis + 1):
+            with for_(*from_array(t, t_delay)):
+                with for_(tomo_axis, 0, tomo_axis < 3, tomo_axis + 1):
+                    if reset_type == "active":
+                        active_reset(qubit, "readout",max_attempts=15,wait_time=500)
+                    elif reset_type == "thermal":
+                        #qubit.wait(4 * qubit.thermalization_time * u.ns)
+                        qubit.wait(100)
+                    else:
+                        raise ValueError(f"Unrecognized reset type {reset_type}.")
+                    align()
+                    #qubit.align()
+                    qubit.xy.play("y180",amplitude_scale = theta/np.pi)
+                    qubit.xy.frame_rotation_2pi((phi-qubit.extras["phi_offset"])/np.pi/2-0.5)
+                    noise_qubit.z.play('const',duration=t,amplitude_scale=iswap_point/noise_qubit.z.operations['const'].amplitude)            
+                    wait(t)
+                    #tomography pulses
+                    with if_(tomo_axis == 0):
+                        qubit.xy.play("y90")
+                    with elif_(tomo_axis == 1):
+                        qubit.xy.play("x90")
+                    align()
 
-                if reset_type == "active":
-                    active_reset(qubit, "readout",max_attempts=15,wait_time=500)
-                elif reset_type == "thermal":
-                    qubit.wait(4 * qubit.thermalization_time * u.ns)
-                else:
-                    raise ValueError(f"Unrecognized reset type {reset_type}.")
-
-                qubit.align()
-                qubit.xy.play("y180",amplitude_scale = theta/np.pi)
-                #qubit.xy.frame_rotation_2pi(phi/np.pi/2-0.5)
-                qubit.xy.frame_rotation_2pi((phi-qubit.extras["phi_offset"])/np.pi/2-0.5)
-
-                wait(t)             
-                align()
-
-                #tomography pulses
-                with if_(tomo_axis == 0):
-                    qubit.xy.play("y90")
-                with elif_(tomo_axis == 1):
-                    qubit.xy.play("x90")
-                align()
-
-                readout_state(qubit, state[0])
-                save(state[0], state_st[0])
-
+                    readout_state(qubit, state[0])
+                    save(state[0], state_st[0])
 
         
         # Measure sequentially
@@ -128,7 +128,7 @@ def QuantumMemory_program(qubit,theta=theta,phi=phi):
 
         with stream_processing():
             n_st.save("n")
-            state_st[0].buffer(3).save_all("state1")
+            state_st[0].buffer(len(t_delay)).buffer(3).save_all("state1")
         return QuantumMemory
 
 
@@ -137,7 +137,7 @@ def QuantumMemory_program(qubit,theta=theta,phi=phi):
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
-    job = qmm.simulate(config, QuantumMemory_program(qubits[0], simulation_config))
+    job = qmm.simulate(config, QuantumMemory_program(qubits[0]), simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()
     waveform_report = job.get_simulated_waveform_report()

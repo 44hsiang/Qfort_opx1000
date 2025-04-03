@@ -16,6 +16,7 @@ from qualang_tools.multi_user import qm_session
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
 from qm import SimulationConfig
+from qualang_tools.bakery import baking
 from qm.qua import *
 from typing import Literal, Optional, List
 
@@ -36,18 +37,19 @@ class Parameters(NodeParameters):
     num_runs: int = 10000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    interaction_time_ns: int = 0
     simulate: bool = False
-    simulation_duration_ns: int = 10000
+    simulation_duration_ns: int = 1000
     timeout: int = 100
-    load_data_id: Optional[int] = None
+    load_data_id: Optional[int] = 1764
     multiplexed: bool = False
     number_of_points: int = 1
-    repeats: int = 20
+    repeats: int = 200
 
 if Parameters().load_data_id is not None:
     node  = QualibrationNode(name=f"{Parameters().load_data_id}_analyze_again", parameters=Parameters())
 else:
-    node = QualibrationNode(name="100f_Random_state_ellipsoid_repeat", parameters=Parameters())
+    node = QualibrationNode(name="101a_Random_state_ellipsoid_swap_qubit1ns", parameters=Parameters())
 load_data_id = node.parameters.load_data_id
 
 # %% {Initialize_QuAM_and_QOP}
@@ -75,9 +77,9 @@ if node.parameters.qubits is None or node.parameters.qubits == "":
 else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
 num_qubits = len(qubits)
-
+noise_qubit = machine.qubits['q2']
+iswap_point = machine.qubit_pairs['q0_q2'].gates['iSWAP'].flux_pulse_control.amplitude
 #%% helper functions
-
 theta_range = np.arange(0,np.pi,1e-4)
 phi_range = np.arange(0,2*np.pi,1e-4)
 def theta_phi_list(n_points):
@@ -121,6 +123,22 @@ def plot_histogram(data, title, subplot_idx, bins, x_labels,ylim):
     plt.ylim(0,ylim)
     plt.xticks(bins, x_labels, rotation=45)
 
+def baked_waveform(waveform_amp, qubit,time):
+    pulse_segments = []  # Stores the baking objects
+    # Create the different baked sequences, each one corresponding to a different truncated duration
+    waveform = [waveform_amp] * 200 # create a 200ns waveform
+    with baking(config, padding_method="left") as b:
+        if time == 0:
+            wf = [0.0] * 16
+        else:
+            wf = waveform[:time]
+        b.add_op(f"flux_pulse_noise", qubit.z.name, wf)
+        b.play(f"flux_pulse_noise", qubit.z.name)
+    # Append the baking object in the list to call it from the QUA program
+    pulse_segments.append(b)
+    return pulse_segments
+
+
 # %% {QUA_program}
 n_runs = node.parameters.num_runs  # Number of runs
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
@@ -128,48 +146,46 @@ reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "therma
 n_points = node.parameters.number_of_points
 repeats = node.parameters.repeats
 
-
 theta_list = np.array([theta_phi_list(n_points)[0] for _ in range(repeats)])
 phi_list = [theta_phi_list(n_points)[1] for _ in range(repeats)]
-t=4
-def QuantumMemory_program(qubit,repeats,theta,phi):
+interaction_time = node.parameters.interaction_time_ns
+baked_signals = baked_waveform(iswap_point, noise_qubit,interaction_time)
+
+def QuantumMemory_program(qubit,repeat):
     with program() as QuantumMemory:
-        ii = declare(int)
-        #theta = declare(fixed, value = theta_list[repeats])
-        #phi = declare(fixed, value = phi_list[repeats])
         I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=1)
         state = [declare(int) for _ in range(1)]
         state_st = [declare_stream() for _ in range(1)]
         tomo_axis = declare(int)
-
+        t = declare(int)
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+
         with for_(n, 0, n < n_runs, n + 1):
             save(n, n_st)
-            with for_(ii, 0, ii < n_points, ii + 1):
-                with for_(tomo_axis, 0, tomo_axis < 3, tomo_axis + 1):
+            with for_(tomo_axis, 0, tomo_axis < 3, tomo_axis + 1):
+                if reset_type == "active":
+                    active_reset(qubit, "readout",max_attempts=15,wait_time=500)
+                elif reset_type == "thermal":
+                    #qubit.wait(4 * qubit.thermalization_time * u.ns)
+                    qubit.wait(100)
+                else:
+                    raise ValueError(f"Unrecognized reset type {reset_type}.")
+                align()
+                qubit.xy.play("y180",amplitude_scale = theta_list[repeat][0]/np.pi)
+                qubit.xy.frame_rotation_2pi((phi_list[repeat][0]-qubit.extras["phi_offset"])/np.pi/2-0.5)
+                align()
+                baked_signals[0].run() 
+                align()
+                wait(interaction_time//4+13+13)
+                #tomography pulses
+                with if_(tomo_axis == 0):
+                    qubit.xy.play("y90")
+                with elif_(tomo_axis == 1):
+                    qubit.xy.play("x90")
+                align()
 
-                    if reset_type == "active":
-                        active_reset(qubit, "readout",max_attempts=15,wait_time=500)
-                    elif reset_type == "thermal":
-                        qubit.wait(4 * qubit.thermalization_time * u.ns)
-                    else:
-                        raise ValueError(f"Unrecognized reset type {reset_type}.")
-
-                    qubit.align()
-                    qubit.xy.play("y180",amplitude_scale = theta/np.pi)
-                    qubit.xy.frame_rotation_2pi((phi-qubit.extras["phi_offset"])/np.pi/2-0.5)
-                    wait(t)
-                    align()
-
-                    #tomography pulses
-                    with if_(tomo_axis == 0):
-                        qubit.xy.play("y90")
-                    with elif_(tomo_axis == 1):
-                        qubit.xy.play("x90")
-                    align()
-
-                    readout_state(qubit, state[0])
-                    save(state[0], state_st[0])
+                readout_state(qubit, state[0])
+                save(state[0], state_st[0])
 
         # Measure sequentially
         if not node.parameters.multiplexed:
@@ -178,6 +194,7 @@ def QuantumMemory_program(qubit,repeats,theta,phi):
         with stream_processing():
             n_st.save("n")
             state_st[0].buffer(3).buffer(n_points).average().save("state1")
+        
         return QuantumMemory
 
 # %% {Simulate_or_execute}
@@ -185,12 +202,19 @@ def QuantumMemory_program(qubit,repeats,theta,phi):
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
-    job = qmm.simulate(config, QuantumMemory_program(qubits[0],0,theta=theta_list[0][0],phi=phi_list[0][0]), simulation_config)
+    job = qmm.simulate(config, QuantumMemory_program(qubits[0],repeat=0), simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()
     waveform_report = job.get_simulated_waveform_report()
     waveform_report.create_plot(samples,plot=True,save_path="./")
-
+    '''
+    fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
+    for i, con in enumerate(samples.keys()):
+        plt.subplot(len(samples.keys()),1,i+1)
+        samples[con].plot()
+        plt.title(con)
+    plt.tight_layout()
+    '''
     # Save the figure
     node.results = {"figure": plt.gcf()}
     node.machine = machine
@@ -202,7 +226,7 @@ elif load_data_id is None:
         job_.append([])
         for qubit in qubits:
             with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-                job = qm.execute(QuantumMemory_program(qubit,repeat,theta=theta_list[repeat][0],phi=phi_list[repeat][0]))
+                job = qm.execute(QuantumMemory_program(qubit,repeat))
                 results = fetching_tool(job, ["n"], mode="live")
                 while results.is_processing():
                     n = results.fetch_all()[0]
@@ -244,7 +268,7 @@ if not node.parameters.simulate:
     # %% {Data_analysis}
     node.results = {"ds": ds, "figs": {}, "results": {}}
     node.results["ds"] = ds
-    filter_data = False
+    filter_data = True
     analyze_results = {}
     data_results = {}
     for q in qubits:
@@ -252,11 +276,18 @@ if not node.parameters.simulate:
         theta_diff = (ds.theta.values-ds.sel(qubit=q.name).Bloch_theta.values)
         phi_diff = angle_error_min(ds.phi.values,ds.sel(qubit=q.name).Bloch_phi.values)
         phi_diff_sort_index = np.argsort(np.abs(phi_diff))
+
+        phi_full_stats = [phi_diff.mean(),phi_diff.std()]
+        theta_full_stats = [theta_diff.mean(),theta_diff.std()]
         filter_index_sd = np.array([])
         # TODO : make short distance index iterable
-        for j in range(2): # 1 => only phase 2 => phase and short distance
+        for j in range(1): # 1 => only phase 2 => phase and short distance
             if filter_data:
-                delete_index = np.union1d(filter_index_sd,phi_diff_sort_index[100:])
+                nn = 1
+                #delete_index = np.union1d(filter_index_sd,phi_diff_sort_index[15:])
+                delete_index_phi = np.where((phi_diff > data_thershold(phi_full_stats,nn)[0]) | (phi_diff < data_thershold(phi_full_stats,nn)[1]))[0]
+                delete_index_theta = np.where((theta_diff > data_thershold(theta_full_stats,nn)[0]) | (theta_diff < data_thershold(theta_full_stats,nn)[1]))[0]
+                delete_index = np.union1d(delete_index_phi,delete_index_theta)
                 filter_index = np.delete(ds.n_points,delete_index.astype(int))
             else:
                 filter_index = np.arange(n_points*repeats)
@@ -264,26 +295,24 @@ if not node.parameters.simulate:
             theta_stats =[theta_diff[filter_index].mean(),theta_diff[filter_index].std()]
             phi_stats = [phi_diff[filter_index].mean(),phi_diff[filter_index].std()]
             # fit ellipsoid
-            x = ds.sel(qubit=q.name).Bloch_vector_x.values[filter_index]
-            y = ds.sel(qubit=q.name).Bloch_vector_y.values[filter_index]
-            z = ds.sel(qubit=q.name).Bloch_vector_z.values[filter_index]
-            theta_data = ds.theta.values[filter_index]
-            phi_data = ds.phi.values[filter_index]    
-            param = ls_ellipsoid(x,y,z)
+            x = ds.sel(qubit=q.name).Bloch_vector_x.values
+            y = ds.sel(qubit=q.name).Bloch_vector_y.values
+            z = ds.sel(qubit=q.name).Bloch_vector_z.values
+
+            param = ls_ellipsoid(x[filter_index],y[filter_index],z[filter_index])
             center,axes,R = polyToParams3D(param,False)
 
             # elliptcal parameters define in the constraint function
             shortest_distance = np.array([])
-            for i in range(n_points*len(filter_index)):
+            for i in range(repeats):
                 x0, y0, z0 = x[i], y[i], z[i]
                 data_point = np.array([x0, y0, z0])
                 cons = {'type': 'eq', 'fun': constraint} # constraint function
                 result = minimize(distance_eq, data_point, constraints=[cons]) # minimize the distance
                 shortest_distance = np.append(shortest_distance,np.abs(result.fun)*np.sign(constraint((x0, y0, z0 ))))
-
-            fidelity_data = [QuantumStateAnalysis([x[i],y[i],z[i]],[theta_data[i],phi_data[i]]).fidelity for i in range(len(filter_index))]
-            trace_distance_data = [QuantumStateAnalysis([x[i],y[i],z[i]],[theta_data[i],phi_data[i]]).trace_distance for i in range(len(filter_index))]
-            filter_index_sd = np.where(np.abs(shortest_distance)>data_thershold([shortest_distance.mean(),shortest_distance.std()],2)[0])
+            fidelity_data = [QuantumStateAnalysis([x[i],y[i],z[i]],[ds.theta.values[i],ds.phi.values[i]]).fidelity for i in range(repeats)]
+            trace_distance_data = [QuantumStateAnalysis([x[i],y[i],z[i]],[ds.theta.values[i],ds.phi.values[i]]).trace_distance for i in range(repeats)]
+            filter_index_sd = np.where(np.abs(shortest_distance)>data_thershold([shortest_distance.mean(),shortest_distance.std()],1)[0])
 
         analyze_results[q.name] = {
             "center": center, 
@@ -302,7 +331,7 @@ if not node.parameters.simulate:
                                 "shortest_distance":shortest_distance,
                                 "fidelity":fidelity_data
                                 }
-        print(f"qubit {q.name} has {len(filter_index)} data points")
+        print(f"qubit {q.name} use {len(filter_index)} data points to fit the ellipsoid")
         from pprint import pprint
         pprint(analyze_results)
     node.results["analyze_results"] = analyze_results
@@ -323,9 +352,9 @@ if not node.parameters.simulate:
         ellipsoid_points_ += analyze_results[qubit['qubit']]['center'].reshape(-1, 1)
         x_ellipsoid_, y_ellipsoid_, z_ellipsoid_ = ellipsoid_points_.reshape(3, *x_ellipsoid_.shape)
         ax.scatter(
-            ds.sel(qubit =qubit['qubit']).Bloch_vector_x.values[filter_index],
-            ds.sel(qubit =qubit['qubit']).Bloch_vector_y.values[filter_index],
-            ds.sel(qubit =qubit['qubit']).Bloch_vector_z.values[filter_index], 
+            ds.sel(qubit =qubit['qubit']).Bloch_vector_x.values,
+            ds.sel(qubit =qubit['qubit']).Bloch_vector_y.values,
+            ds.sel(qubit =qubit['qubit']).Bloch_vector_z.values, 
             label="Data points", color="black", s=2
             )
         ax.plot_wireframe(x, y, z, color="blue", alpha=0.05, label=" Bloch sphere")
@@ -336,8 +365,11 @@ if not node.parameters.simulate:
     # plot the shortest distance
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        ax.plot(data_results[qubit['qubit']]['shortest_distance'],'.',label='distance')
-        ax.legend()
+        ax.plot(data_results[qubit['qubit']]['shortest_distance'],'.')
+        ax.plot(filter_index,data_results[qubit['qubit']]['shortest_distance'][filter_index],'r.',label='fitting data')
+
+        #ax.legend(loc='outside upper right')
+        ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
         ax.set_xlabel("data points")
         ax.set_ylabel("error(arb.)")
         #ax.set_ylim(-0.02,0.02)
@@ -347,29 +379,28 @@ if not node.parameters.simulate:
     # plot the theta and phi error
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        ax.plot(data_results[qubit['qubit']]['phi'],'.',label='fun')
-        #ax.plot(ds.sel(qubit=q.name).Bloch_phi.values-ds.phi.values,'.',label='direct')
-        ax.plot(data_results[qubit['qubit']]['theta'],'.',label='theta')
+        ax.plot(phi_diff,color='#6EC1E4',marker='.',linestyle='None',label='phi')
+        ax.plot(theta_diff,color='#A8E6A3',marker='.',linestyle='None',label='theta')
+        ax.plot(filter_index,data_results[qubit['qubit']]['phi'],color='blue',marker='*',linestyle='None',label='fitting phi')
+        ax.plot(filter_index,data_results[qubit['qubit']]['theta'],color='green',marker='*',linestyle='None',label='fitting theta')
         
-        ax.legend()
+        ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
         ax.set_xlabel("data points")
         ax.set_ylim(-np.pi,np.pi)
-        #ax.set_xlim(0,50)
         ax.set_ylabel("error(rad)")
         ax.set_title(f"{qubit['qubit']} phase and theta error")
-
     node.results["figure_error"] = grid.fig
 
 # %% check the random theta and phi
 
 bins, x_labels = generate_bins_labels()
 figure = plt.figure(figsize=(8, 5))
-plot_histogram(theta_data, 'Theta', 221, bins, x_labels,ylim=55)
-plot_histogram(ds.theta, 'Theta', 223, bins, x_labels,ylim=55)
-plot_histogram(phi_data, 'Phi', 222, bins, x_labels,ylim=35)
+plot_histogram(ds.theta.values[filter_index], 'Theta', 221, bins, x_labels,ylim=40)
+plot_histogram(ds.theta.values, 'Theta', 223, bins, x_labels,ylim=55)
+plot_histogram(ds.phi.values[filter_index], 'Phi', 222, bins, x_labels,ylim=40)
 plot_histogram(ds.phi, 'Phi', 224, bins, x_labels,ylim=35)
 
-plt.suptitle(f"id = {load_data_id} total count = {len(theta_data)}")
+plt.suptitle(f"id = {load_data_id} total count = {len(filter_index)}")
 plt.tight_layout()
 node.results["figure_phi_theta_distrbution"] = figure
 
@@ -386,5 +417,3 @@ if not node.parameters.simulate:
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
-
-3# %%

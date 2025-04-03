@@ -40,19 +40,19 @@ class Parameters(NodeParameters):
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
-    number_of_points: int = 2
+    number_of_points: int = 20
 
 #theta,phi = random_bloch_state_uniform()
 
 node = QualibrationNode(name="100e_Random_state_ellipsoid", parameters=Parameters())
+load_data_id = node.parameters.load_data_id
 
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
-machine = QuAM.load(path)
+machine = QuAM.load()
 
 #%%
 # delete the thread when using active reset
@@ -76,6 +76,65 @@ else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
 num_qubits = len(qubits)
 
+#%% helper functions
+theta_range = np.arange(0,np.pi,1e-4)
+phi_range = np.arange(0,2*np.pi,1e-4)
+def theta_phi_list(n_points):
+    theta_list,phi_list = [],[]
+    for i in range(n_points):
+        theta,phi = np.random.choice(theta_range),np.random.choice(phi_range)
+        theta_list.append(theta)
+        phi_list.append(phi)
+    return theta_list,phi_list
+
+# distance check
+def distance_eq(point):
+    x, y, z = point
+    return (x - x0)**2 + (y - y0)**2 + (z - z0)**2
+
+# condition function
+def constraint(point):
+    x, y, z = point
+    return param[0]*x*x+param[1]*y*y+param[2]*z*z+param[3]*x*y+param[4]*x*z+param[5]*y*z+param[6]*x+param[7]*y+param[8]*z+param[9]
+
+def angle_error_min(theoretical,actual):
+    error = (actual - theoretical + np.pi) % (2*np.pi) - np.pi  
+    return error  
+
+def data_thershold(data,n):
+    avg,std = data[0],data[1]
+    return avg+n*std,avg-n*std
+
+#plotting
+def generate_bins_labels(bin_step=0.2, max_value=2*np.pi):
+    bin_width = bin_step * np.pi
+    bins = np.arange(0, max_value + bin_width, bin_width)
+    labels = [f'{bin_step * i:.1f}π' for i in range(len(bins))]
+    return bins, labels
+
+def plot_histogram(data, title, subplot_idx, bins, x_labels,ylim):
+    plt.subplot(subplot_idx)
+    plt.hist(data, bins=bins, edgecolor='black', alpha=0.7)
+    plt.title(title)
+    plt.ylabel('Count')
+    plt.ylim(0,ylim)
+    plt.xticks(bins, x_labels, rotation=45)
+
+def baked_waveform(waveform_amp, qubit,time):
+    pulse_segments = []  # Stores the baking objects
+    # Create the different baked sequences, each one corresponding to a different truncated duration
+    waveform = [waveform_amp] * 200 # create a 200ns waveform
+    with baking(config, padding_method="left") as b:
+        if time == 0:
+            wf = [0.0] * 16
+        else:
+            wf = waveform[:time]
+        b.add_op(f"flux_pulse_noise", qubit.z.name, wf)
+        b.play(f"flux_pulse_noise", qubit.z.name)
+    # Append the baking object in the list to call it from the QUA program
+    pulse_segments.append(b)
+    return pulse_segments
+
 
 # %% {QUA_program}
 n_runs = node.parameters.num_runs  # Number of runs
@@ -97,6 +156,7 @@ for i in range(n_points):
 t=4
 def QuantumMemory_program(qubit):
     with program() as QuantumMemory:
+
         ii = declare(int)
         theta = declare(fixed, value = theta_list)
         phi = declare(fixed, value = phi_list)
@@ -104,14 +164,12 @@ def QuantumMemory_program(qubit):
         state = [declare(int) for _ in range(1)]
         state_st = [declare_stream() for _ in range(1)]
         tomo_axis = declare(int)
-
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
-
+        
         with for_(n, 0, n < n_runs, n + 1):
             save(n, n_st)
             with for_(ii, 0, ii < n_points, ii + 1):
                 with for_(tomo_axis, 0, tomo_axis < 3, tomo_axis + 1):
-
                     if reset_type == "active":
                         active_reset(qubit, "readout",max_attempts=15,wait_time=500)
                     elif reset_type == "thermal":
@@ -132,19 +190,17 @@ def QuantumMemory_program(qubit):
                         qubit.xy.play("x90")
                     align()
 
-                    readout_state(qubit, state[0])
-                    save(state[0], state_st[0])
-            wait(1 * qubit.thermalization_time * u.ns)
+                readout_state(qubit, state[0])
+                save(state[0], state_st[0])
 
 
-        
         # Measure sequentially
         if not node.parameters.multiplexed:
             align()
 
         with stream_processing():
             n_st.save("n")
-            state_st[0].buffer(3).buffer(n_points).average().save("state1")
+            state_st[0].buffer(n_points).buffer(3).average().save("state1")
         return QuantumMemory
 
 
@@ -181,106 +237,161 @@ elif node.parameters.load_data_id is None:
 
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
-    
-    if node.parameters.load_data_id is None:
-        # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        for i in range(num_qubits):
-            ds_ = fetch_results_as_xarray(job_[i].result_handles, [qubits[i]], { "axis": ['x','y','z'],"n_points": np.arange(n_points)})
-            ds = xr.concat([ds, ds_], dim="qubit") if i != 0 else ds_
+    if load_data_id is None:
+        theta_list = np.array(theta_list).flatten()
+        phi_list = np.array(phi_list).flatten()
+        ds = ds.assign_coords(theta = theta_list,phi =phi_list)    
+        ds["Bloch_vector_x"] = 1-2*ds["state"].sel(axis='x')
+        ds["Bloch_vector_y"] = 1-2*ds["state"].sel(axis='y')
+        ds["Bloch_vector_z"] = 1-2*ds["state"].sel(axis='z')
+        ds["Bloch_phi"] = np.arctan2(ds.Bloch_vector_y,ds.Bloch_vector_x)
+        ds["Bloch_phi"] = ds.Bloch_phi.where(ds.Bloch_phi>0,ds.Bloch_phi+2*np.pi)
+        ds["Bloch_theta"] = np.arccos(ds.Bloch_vector_z/np.sqrt(ds.Bloch_vector_x**2+ds.Bloch_vector_y**2+ds.Bloch_vector_z**2))
     else:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
-        ds = ds.assign_coords(theta = theta_list,phi =phi_list)
-    
-    ds["Bloch_vector_x"] = 1-2*ds["state"].sel(axis='x')
-    ds["Bloch_vector_y"] = 1-2*ds["state"].sel(axis='y')
-    ds["Bloch_vector_z"] = 1-2*ds["state"].sel(axis='z')
-    ds["Bloch_phi"] = np.arctan2(ds.Bloch_vector_y,ds.Bloch_vector_x)
-    ds["Bloch_theta"] = np.arccos(ds.Bloch_vector_z/np.sqrt(ds.Bloch_vector_x**2+ds.Bloch_vector_y**2+ds.Bloch_vector_z**2))
-    print(np.rad2deg(np.array(phi_list)-ds.sel(qubit='q0').Bloch_phi.values))
-    print(np.rad2deg(np.array(theta_list)-ds.sel(qubit='q0').Bloch_theta.values))
     # %% {Data_analysis}
     node.results = {"ds": ds, "figs": {}, "results": {}}
     node.results["ds"] = ds
-    fit_results = {}
-        
+    filter_data = False
+    analyze_results = {}
+    data_results = {}
     for q in qubits:
-        x = ds.sel(qubit=q.name).Bloch_vector_x.values
-        y = ds.sel(qubit=q.name).Bloch_vector_y.values
-        z = ds.sel(qubit=q.name).Bloch_vector_z.values
-        parameters = ls_ellipsoid(x,y,z)
-        center,axes,R = polyToParams3D(parameters,False)
-        fit_results[q.name] = {"center": center, "axes": axes, "rotation_matrix": R}
+        # filter bad data if fitting_again = True
+        theta_diff = (ds.theta.values-ds.sel(qubit=q.name).Bloch_theta.values)
+        phi_diff = angle_error_min(ds.phi.values,ds.sel(qubit=q.name).Bloch_phi.values)
+        phi_diff_sort_index = np.argsort(np.abs(phi_diff))
+        filter_index_sd = np.array([])
+        # TODO : make short distance index iterable
+        for j in range(2): # 1 => only phase 2 => phase and short distance
+            if filter_data:
+                delete_index = np.union1d(filter_index_sd,phi_diff_sort_index[100:])
+                filter_index = np.delete(ds.n_points,delete_index.astype(int))
+            else:
+                filter_index = np.arange(n_points*1)
 
-        # elliptcal parameters
-        param = parameters
+            theta_stats =[theta_diff[filter_index].mean(),theta_diff[filter_index].std()]
+            phi_stats = [phi_diff[filter_index].mean(),phi_diff[filter_index].std()]
+            # fit ellipsoid
+            x = ds.sel(qubit=q.name).Bloch_vector_x.values[filter_index]
+            y = ds.sel(qubit=q.name).Bloch_vector_y.values[filter_index]
+            z = ds.sel(qubit=q.name).Bloch_vector_z.values[filter_index]
+            theta_data = ds.theta.values[filter_index]
+            phi_data = ds.phi.values[filter_index]    
+            param = ls_ellipsoid(x,y,z)
+            center,axes,R = polyToParams3D(param,False)
 
-        # distance check
-        def objective(point):
-            x, y, z = point
-            return (x - x0)**2 + (y - y0)**2 + (z - z0)**2
+            # elliptcal parameters define in the constraint function
+            shortest_distance = np.array([])
+            for i in range(len(filter_index)):
+                x0, y0, z0 = x[i], y[i], z[i]
+                data_point = np.array([x0, y0, z0])
+                cons = {'type': 'eq', 'fun': constraint} # constraint function
+                result = minimize(distance_eq, data_point, constraints=[cons]) # minimize the distance
+                shortest_distance = np.append(shortest_distance,np.abs(result.fun)*np.sign(constraint((x0, y0, z0 ))))
 
-        # condition function
-        def constraint(point):
-            x, y, z = point
-            return param[0]*x*x+param[1]*y*y+param[2]*z*z+param[3]*x*y+param[4]*x*z+param[5]*y*z+param[6]*x+param[7]*y+param[8]*z+param[9]
+            fidelity_data = [QuantumStateAnalysis([x[i],y[i],z[i]],[theta_data[i],phi_data[i]]).fidelity for i in range(len(filter_index))]
+            trace_distance_data = [QuantumStateAnalysis([x[i],y[i],z[i]],[theta_data[i],phi_data[i]]).trace_distance for i in range(len(filter_index))]
+            filter_index_sd = np.where(np.abs(shortest_distance)>data_thershold([shortest_distance.mean(),shortest_distance.std()],2)[0])
 
-        shortest_distance = np.array([])
-
-        for i in range(n_points):
-            x0, y0, z0 = x[i], y[i], z[i]
-            data_point = np.array([x0, y0, z0])
-            # condition
-            cons = {'type': 'eq', 'fun': constraint}
-            # solved
-            result = minimize(objective, data_point, constraints=[cons])
-            # the shortest distance
-            shortest_distance = np.append(shortest_distance,np.sqrt(result.fun))
-        print(f"the shortest distance average = {shortest_distance.mean():.3} and std = {shortest_distance.std():.3}")
-    node.results["fit_results"] = fit_results
-
+        analyze_results[q.name] = {
+            "center": center, 
+            "axes": axes, 
+            "rotation_matrix": R,
+            "volume": 4/3*np.pi*axes[0]*axes[1]*axes[2],
+            "shortest_distance_stats":[shortest_distance.mean(),shortest_distance.std()],
+            "theta_stats":theta_stats,
+            "phi_stats":phi_stats,
+            "fidelity_stats":[np.mean(fidelity_data),np.std(fidelity_data)],
+            "trace_distance_stats":[np.mean(trace_distance_data),np.std(trace_distance_data)] 
+            }
+        data_results[q.name] = {"theta":theta_diff[filter_index],
+                                "phi":phi_diff[filter_index],
+                                "shortest_distance":shortest_distance,
+                                "fidelity":fidelity_data
+                                }
+        print(f"qubit {q.name} has {len(filter_index)} data points")
+        from pprint import pprint
+        pprint(analyze_results)
+    node.results["analyze_results"] = analyze_results
     # %% {Plotting}
-    %matplotlib qt
     # ellipsoid function
-    u = np.linspace(0, 2 * np.pi, 100)
-    v = np.linspace(0, np.pi, 100)
-
+    u,v = np.linspace(0, 2 * np.pi, 100), np.linspace(0, np.pi, 100)
     x = np.outer(np.cos(u), np.sin(v))
     y = np.outer(np.sin(u), np.sin(v))
     z = np.outer(np.ones(np.size(u)), np.cos(v))
 
     grid = QubitGrid(ds, [q.grid_location for q in qubits],is_3d=True)
     for ax, qubit in grid_iter(grid):
-        x_ellipsoid_ = fit_results[qubit['qubit']]['axes'][0] * np.outer(np.cos(u), np.sin(v))
-        y_ellipsoid_ = fit_results[qubit['qubit']]['axes'][1] * np.outer(np.sin(u), np.sin(v))
-        z_ellipsoid_ = fit_results[qubit['qubit']]['axes'][2] * np.outer(np.ones_like(u), np.cos(v))
+        x_ellipsoid_ = analyze_results[qubit['qubit']]['axes'][0] * np.outer(np.cos(u), np.sin(v))
+        y_ellipsoid_ = analyze_results[qubit['qubit']]['axes'][1] * np.outer(np.sin(u), np.sin(v))
+        z_ellipsoid_ = analyze_results[qubit['qubit']]['axes'][2] * np.outer(np.ones_like(u), np.cos(v))
 
-        ellipsoid_points_ = np.dot(fit_results[qubit['qubit']]['rotation_matrix'],np.array([x_ellipsoid_.ravel(), y_ellipsoid_.ravel(), z_ellipsoid_.ravel()]))
-        ellipsoid_points_ += fit_results[qubit['qubit']]['center'].reshape(-1, 1)
+        ellipsoid_points_ = np.dot(analyze_results[qubit['qubit']]['rotation_matrix'],np.array([x_ellipsoid_.ravel(), y_ellipsoid_.ravel(), z_ellipsoid_.ravel()]))
+        ellipsoid_points_ += analyze_results[qubit['qubit']]['center'].reshape(-1, 1)
         x_ellipsoid_, y_ellipsoid_, z_ellipsoid_ = ellipsoid_points_.reshape(3, *x_ellipsoid_.shape)
-
-        ax.scatter(ds.sel(qubit =qubit['qubit']).Bloch_vector_x.values,ds.sel(qubit =qubit['qubit']).Bloch_vector_y.values,ds.sel(qubit =qubit['qubit']).Bloch_vector_z.values, label="Data points", color="black")
-        #ax.scatter(np.sin(theta_list)*np.cos(phi_list),np.sin(theta_list)*np.sin(phi_list),np.cos(theta_list), label="ideal points", color="blue")
-
-        ax.plot_wireframe(x, y, z, color="blue", alpha=0.1, label=" Bloch sphere")
-        ax.plot_wireframe(x_ellipsoid_, y_ellipsoid_, z_ellipsoid_, color="red", alpha=0.1, label="fitted ellipsoid")
+        ax.scatter(
+            ds.sel(qubit =qubit['qubit']).Bloch_vector_x.values[filter_index],
+            ds.sel(qubit =qubit['qubit']).Bloch_vector_y.values[filter_index],
+            ds.sel(qubit =qubit['qubit']).Bloch_vector_z.values[filter_index], 
+            label="Data points", color="black", s=2
+            )
+        ax.plot_wireframe(x, y, z, color="blue", alpha=0.05, label=" Bloch sphere")
+        ax.plot_wireframe(x_ellipsoid_, y_ellipsoid_, z_ellipsoid_, color="red", alpha=0.08, label="fitted ellipsoid")
         ax.set_title(f"{qubit['qubit']} Bloch Sphere")
-    
     node.results["figure_Bloch_vector"] = grid.fig
 
-    # %% {Update_state}
-    if not node.parameters.simulate:
-        
-        if node.parameters.reset_type_thermal_or_active == "active":
-            for i,j in zip(machine.active_qubit_names,"abcde"):
-                machine.qubits[i].xy.thread = j
-                machine.qubits[i].resonator.thread = j
+    # plot the shortest distance
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
+    for ax, qubit in grid_iter(grid):
+        ax.plot(data_results[qubit['qubit']]['shortest_distance'],'.',label='distance')
+        ax.legend()
+        ax.set_xlabel("data points")
+        ax.set_ylabel("error(arb.)")
+        #ax.set_ylim(-0.02,0.02)
+        ax.set_title(f"{qubit['qubit']} distance")
+    node.results["figure_short_distance"] = grid.fig
 
-    # %% {Save_results}
-    if not node.parameters.simulate:
-        node.outcomes = {q.name: "successful" for q in qubits}
-        node.results["initial_parameters"] = node.parameters.model_dump()
-        node.machine = machine
-        node.save()
+    # plot the theta and phi error
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
+    for ax, qubit in grid_iter(grid):
+        ax.plot(data_results[qubit['qubit']]['phi'],'.',label='fun')
+        #ax.plot(ds.sel(qubit=q.name).Bloch_phi.values-ds.phi.values,'.',label='direct')
+        ax.plot(data_results[qubit['qubit']]['theta'],'.',label='theta')
         
-# %%
+        ax.legend()
+        ax.set_xlabel("data points")
+        ax.set_ylim(-np.pi,np.pi)
+        #ax.set_xlim(0,50)
+        ax.set_ylabel("error(rad)")
+        ax.set_title(f"{qubit['qubit']} phase and theta error")
+
+    node.results["figure_error"] = grid.fig
+
+# %% check the random theta and phi
+if filter_data:
+    bins, x_labels = generate_bins_labels()
+    figure = plt.figure(figsize=(8, 5))
+    plot_histogram(theta_data, 'Theta', 221, bins, x_labels,ylim=55)
+    plot_histogram(ds.theta, 'Theta', 223, bins, x_labels,ylim=55)
+    plot_histogram(phi_data, 'Phi', 222, bins, x_labels,ylim=35)
+    plot_histogram(ds.phi, 'Phi', 224, bins, x_labels,ylim=35)
+    plt.suptitle(f"id = {load_data_id} total count = {len(theta_data)}")
+    plt.tight_layout()
+    node.results["figure_phi_theta_distrbution"] = figure
+
+# %% {Update_state}
+if not node.parameters.simulate:
+    if node.parameters.reset_type_thermal_or_active == "active" and load_data_id is None:
+        for i,j in zip(machine.active_qubit_names,"abcde"):
+            machine.qubits[i].xy.core = j
+            machine.qubits[i].resonator.core = j
+
+# %% {Save_results}
+if not node.parameters.simulate:
+    node.outcomes = {q.name: "successful" for q in qubits}
+    node.results["initial_parameters"] = node.parameters.model_dump()
+    node.machine = machine
+    node.save()
+
+3# %%

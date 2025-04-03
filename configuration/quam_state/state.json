@@ -129,6 +129,7 @@
                 },
                 "intermediate_frequency": -44406667.12182767,
                 "thread": "a",
+                "core": "a",
                 "opx_output": "#/wiring/qubits/q0/xy/opx_output",
                 "__class__": "quam.components.channels.MWChannel"
             },
@@ -352,6 +353,7 @@
                 },
                 "intermediate_frequency": -38917796.35212109,
                 "thread": "b",
+                "core": "b",
                 "opx_output": "#/wiring/qubits/q1/xy/opx_output",
                 "__class__": "quam.components.channels.MWChannel"
             },
@@ -427,6 +429,7 @@
                 },
                 "intermediate_frequency": -174772344.0,
                 "thread": "b",
+                "core": "b",
                 "opx_input": "#/wiring/qubits/q1/rr/opx_input",
                 "time_of_flight": 376,
                 "opx_output": "#/wiring/qubits/q1/rr/opx_output",
@@ -575,6 +578,7 @@
                 },
                 "intermediate_frequency": 269401159.3313356,
                 "thread": "c",
+                "core": "c",
                 "opx_output": "#/wiring/qubits/q2/xy/opx_output",
                 "__class__": "quam.components.channels.MWChannel"
             },
@@ -650,6 +654,7 @@
                 },
                 "intermediate_frequency": -41070811.0,
                 "thread": "c",
+                "core": "c",
                 "opx_input": "#/wiring/qubits/q2/rr/opx_input",
                 "time_of_flight": 376,
                 "opx_output": "#/wiring/qubits/q2/rr/opx_output",
@@ -797,6 +802,7 @@
                 },
                 "intermediate_frequency": 185947774.35234362,
                 "thread": "d",
+                "core": "d",
                 "opx_output": "#/wiring/qubits/q3/xy/opx_output",
                 "__class__": "quam.components.channels.MWChannel"
             },
@@ -1020,6 +1026,7 @@
                 },
                 "intermediate_frequency": 231873515.1453492,
                 "thread": "e",
+                "core": "e",
                 "opx_output": "#/wiring/qubits/q4/xy/opx_output",
                 "__class__": "quam.components.channels.MWChannel"
             },
