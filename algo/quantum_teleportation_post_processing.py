@@ -31,6 +31,7 @@ To form a feasible pair, condition below must be satisfied:
 - one of @qubit_A or @qubit_B must be q2
 Hence, @qubit_A must be q2, @qubit_mess can be q3 or q4, 
 and @qubit_b can be q0 or q1.
+Teleportation experiment data start from #340
 '''
 
 # %% {Imports}
@@ -63,7 +64,8 @@ import sys
 class Parameters(NodeParameters):
 
     qubit_sets: List[str] = ["q3", "q2", "q1"] # list of lists of thwe qubits making up the GHZ state
-    messages: List[tuple[complex, complex]] = [(1+0j, 0+0j)] # (alpha, beta)
+    # messages: List[tuple[complex, complex]] = [(1+0j, 0+0j)] # (alpha, beta)
+    messages: List[int] = [5]
     num_shots: int = 20000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
@@ -152,25 +154,39 @@ with program() as quantum_teleportation_post_processing:
                     active_reset(qset.qubit_B)
                 else:
                     t1 = max(qset.qubit_mess.thermalization_time,
-                            qset.qubit_A.thermalization_time,
-                            qset.qubit_B.thermalization_time)
+                             qset.qubit_A.thermalization_time,
+                             qset.qubit_B.thermalization_time)
                     wait(5 * t1 * u.ns)
                 align()
 
                 # Initialization
                 # Prepare Bell state on Alice and Bob
                 # The process produce $|\Phi^+\rangle$
+
                 qset.qubit_A.xy.play("y90")
                 qset.qubit_B.xy.play("y90")
                 qset.qubit_pair_AB.gates['Cz'].execute()
                 qset.qubit_A.xy.play("-y90")
-                
-                # Prepare message to pass
-                qset.qubit_mess.xy.play("y90")
+
+                assert message in [0, 1, 2, 3, 4, 5]
+
+                if message == 0:
+                    pass
+                elif message == 1:
+                    qset.qubit_mess.xy.play("y180")
+                elif message == 2:
+                    qset.qubit_mess.xy.play("y90")
+                elif message == 3:
+                    qset.qubit_mess.xy.play("-y90")
+                elif message == 4:
+                    qset.qubit_mess.xy.play("-x90")
+                elif message == 5:
+                    qset.qubit_mess.xy.play("x90")
 
                 align()
                 # quantum teleportation
                 # CNOT gate: control: qubit_mess, target: qubit_A
+
                 qset.qubit_A.xy.play("y90")
                 qset.qubit_pair_mA.gates['Cz'].execute()
                 qset.qubit_A.xy.play("-y90")
@@ -178,6 +194,7 @@ with program() as quantum_teleportation_post_processing:
                 # Hadamard gate on message qubit
                 qset.qubit_mess.xy.play("y90")
                 align()
+
 
                 with if_(tomo_axis == 0):   # x-axis
                     qset.qubit_B.xy.play("y90")
@@ -217,28 +234,14 @@ elif node.parameters.load_data_id is None:
             progress_counter(n, n_shots, start_time=results.start_time)
 
 # %% {Data_fetching_and_dataset_creation}
-def load_and_increment_counter(file_path="counter.txt"):
-    try:
-        with open(file_path, "r") as f:
-            count = int(f.read().strip())
-    except FileNotFoundError:
-        count = 0  # 若檔案不存在，從 0 開始
-
-    count += 1
-
-    with open(file_path, "w") as f:
-        f.write(str(count))
-
-    return count
-
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
         # 假設你有 3 個 tomographic axis，2000 次 shots
         data = job.result_handles.get('state1').fetch_all()
         coords = {
-            "tomo_axis_bob": [0, 1, 2],   # 代表 Z, X, Y
-            "n": np.arange(1, n_shots + 1)
+            "tomo_axis_bob": [0, 1, 2],   # 代表 X, Y, Z
+            "n": np.arange(n_shots)
         }
 
         ds = xr.Dataset(
@@ -251,14 +254,12 @@ if not node.parameters.simulate:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
 
+    
     node.results = {"ds": ds}
 
 # %% {Data_fetching_and_dataset_creation}
 # Assume only one element in @qubit_sets
-if not node.parameters.simulate:
-    data = ds['state']
-    
-    # Calculate confusion matrix
+def data_correction(data, qset, use_conf_mat=True):
     conf_mat = np.array([[1]])
     conf_mat = np.kron(conf_mat, qset.qubit_mess.resonator.confusion_matrix)
     conf_mat = np.kron(conf_mat, qset.qubit_A.resonator.confusion_matrix)
@@ -269,13 +270,20 @@ if not node.parameters.simulate:
         for state in data.sel(tomo_axis_bob=dim):
             state_prob[dim][state] += 1
         state_prob[dim] = state_prob[dim] / n_shots
-        # print('before:', state_prob[dim])
-        state_prob[dim] = np.linalg.inv(conf_mat) @ state_prob[dim]
-        state_prob[dim] = np.where(state_prob[dim] < 0, 0, state_prob[dim])  # 將負值裁為0
-        state_prob[dim] /= np.sum(state_prob[dim])  # normalize
-        # print('after:', state_prob[dim])
-    print('state_prob')
-    print(state_prob)
+        if use_conf_mat:
+            print('Confusion matrix used')
+            state_prob[dim] = np.linalg.inv(conf_mat) @ state_prob[dim]
+            state_prob[dim] = np.where(state_prob[dim] < 0, 0, state_prob[dim])  # 將負值裁為0
+            state_prob[dim] /= np.sum(state_prob[dim])  # normalize
+    return state_prob
+
+#%%
+if not node.parameters.simulate:
+    data = ds['state']
+    
+    # Calculate confusion matrix
+    state_prob = data_correction(data, qset)
+    '''
     eprob_group = np.zeros((4, 3))
     for result in range(4):
         for dim in range(3):
@@ -285,45 +293,45 @@ if not node.parameters.simulate:
             eprob_group[result][dim] = eprob / (gprob + eprob)
     print('eprob_group')
     print(eprob_group)
-    with open("qtp_output.txt", "a") as f:  # 'a' = append mode
-        data_cnt = load_and_increment_counter()
-        f.write(f"#{data_cnt} initial state |+>.\n")
-        f.write('qset.qubit_mess.xy.play("y90")\n')
-        for result in range(4):
-            rx = 1 - 2 * eprob_group[result][0]
-            ry = 1 - 2 * eprob_group[result][1]
-            rz = 1 - 2 * eprob_group[result][2]
-            norm = math.sqrt(rx ** 2 + ry ** 2 + rz ** 2)
-            rx /= norm
-            ry /= norm
-            rz /= norm
+    for result in range(4):
+        rx = 1 - 2 * eprob_group[result][0]
+        ry = 1 - 2 * eprob_group[result][1]
+        rz = 1 - 2 * eprob_group[result][2]
+        norm = math.sqrt(rx ** 2 + ry ** 2 + rz ** 2)
+        rx /= norm
+        ry /= norm
+        rz /= norm
 
-            if result == 0:
-                rx, ry = -rx, -ry   # Z-gate
-            if result == 1:
-                ry, rz = -ry, -rz   # X-gate
-            if result == 3:
-                rx, rz = -rx, -rz   # X-gate than Z-gate
-            # print(f'(result, rx, ry, rz) ({result}, {rx:.2f}, {ry:.2f}, {rz:.2f})')
-            norm = math.sqrt(rx ** 2 + ry ** 2 + rz ** 2)
-            rxy_len = math.sqrt(rx ** 2 + ry ** 2)
-            f.write(f"    (result, rxy_len, rz) = ({result}, {rxy_len:.2f}, {rz:.2f})\n")
-
+        if result == 0:
+            rx, ry = -rx, -ry   # Z-gate
+        if result == 1:
+            rx, rz = -rx, -rz   # Z-gate than X-gate
+        if result == 3:
+            ry, rz = -ry, -rz   # X-gate
+        norm = math.sqrt(rx ** 2 + ry ** 2 + rz ** 2)
+        rxy_len = math.sqrt(rx ** 2 + ry ** 2)
+        print(f'(result, rxy_len, rz) ({result}, {rxy_len:.2f}, {rz:.2f})')
     '''
-    print('excited state fidelity:', qubit_sets[0].qubit_B.resonator.confusion_matrix[1][1])
-    # Use fidelity to correct excited state probability
-    e_prob = (e_cnt / n_shots) * qubit_sets[0].qubit_B.resonator.confusion_matrix[1][1]
-
-    beta = e_prob[2]
-    alpha = math.sqrt(1 - beta)
-    beta = math.sqrt(beta)
-    print('sum prob.:', alpha ** 2 + beta ** 2)
-
-    x_expect = (1 - e_prob[0]) - e_prob[0]
-    y_expect = (1 - e_prob[1]) - e_prob[1]
-    beta *= math.e ** (1j * math.atan(y_expect / x_expect))
-    print('alpha: ', alpha, ', beta: ', beta, sep='')
-    '''
+    # %% {plot raw data}
+    f,axs = plt.subplots(3,1,figsize=(6,3*3))
+    for dim in range(3):
+        ax = axs[dim]
+        ax.bar(['000', '001', '010', '011', '100', '101', '110', '111'], state_prob[dim], color='skyblue', edgecolor='navy')
+        ax.set_ylim(0, 0.5)
+        for j, v in enumerate(state_prob[dim]):
+            ax.text(j, v, f'{v:.2f}', ha='center', va='bottom')
+        ax.set_ylabel('Probability')
+        ax.set_xlabel('State')
+        if dim == 0:
+            name = qset.name + 'x'
+        elif dim == 1:
+            name = qset.name + 'y'
+        elif dim == 2:
+            name = qset.name + 'z' 
+        ax.set_title(name)
+    f.tight_layout()
+    plt.show()
+    node.results["figure"] = f
 
 # %% {Save_results}
 if not node.parameters.simulate:
@@ -331,5 +339,4 @@ if not node.parameters.simulate:
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
-        
 # %%

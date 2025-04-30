@@ -52,6 +52,7 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     multiplexed: bool = True
+    load_data_id: Optional[int] = None
 
 
 node = QualibrationNode(name="07b_IQ_Blobs", parameters=Parameters())
