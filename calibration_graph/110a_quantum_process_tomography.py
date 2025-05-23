@@ -22,6 +22,7 @@ import xarray as xr
 from qiskit.result import CorrelatedReadoutMitigator
 from qiskit.visualization import plot_bloch_vector
 from qiskit.visualization.bloch import Bloch
+from numpy.linalg import norm
 
 
 # %% {Node_parameters}
@@ -34,7 +35,7 @@ class Parameters(NodeParameters):
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-    load_data_id: Optional[int] = None
+    load_data_id: Optional[int] = 2162
     multiplexed: bool = False
     desired_state: Optional[List[List[float]]] = [[0,0],[np.pi,0],[np.pi/2,0],[np.pi/2,np.pi/2]]
     operation_name: str = "y90"
@@ -315,30 +316,93 @@ if not node.parameters.simulate:
         }
     # %% process tomography
 
-    def vec(rho):
-        """Vectorize a 2x2 matrix in column-major (Fortran) order"""
-        return rho.reshape(-1, order='F')  # 'F' = column-major
+    def pauli_expansion_single_qubit(rho: np.ndarray) -> np.ndarray:
+        I = np.array([[1, 0], [0, 1]], dtype=complex)
+        X = np.array([[0, 1], [1, 0]], dtype=complex)
+        Y = np.array([[0, -1j], [1j,  0]], dtype=complex)
+        Z = np.array([[1, 0], [0, -1]], dtype=complex)
+        P = [I, X, Y, Z]
+        vec = []
+        for i in range(4):
+            coef = 1/2 * np.trace(rho @ P[i])
+            vec.append(coef)
 
-    def build_superoperator(input_states, output_states):
+        return np.array(vec)
+
+    def build_superoperator(rho_in: any, rho_out: any) -> np.ndarray:
         """
         Constructs the 4x4 superoperator S such that:
         vec(rho_out) = S @ vec(rho_in)
-        
-        input_states/output_states: list of 4 density matrices (2x2)
+
+        rho_out/rho_in: list of 4 density matrices in Puali basis (2x2)
         """
         # Vectorize all input and output states
-        R_in = np.column_stack([vec(rho) for rho in input_states])
-        R_out = np.column_stack([vec(rho) for rho in output_states])
-        
+        R_in = np.column_stack([pauli_expansion_single_qubit(rho) for rho in rho_in])
+        R_out = np.column_stack([pauli_expansion_single_qubit(rho) for rho in rho_out])
         # Solve S = R_out @ R_in^{-1}
         try:
             R_in_inv = np.linalg.inv(R_in)
         except np.linalg.LinAlgError:
             print("Warning: R_in is not invertible, using pseudo-inverse.")
             R_in_inv = np.linalg.pinv(R_in)
-        
+
         S = R_out @ R_in_inv
         return S
+    
+    def process_fidelity(superop, target='id'):
+        """
+        Compute process fidelity with respect to a target quantum process.
+        
+        Parameters:
+            superop: 4x4 numpy array (superoperator matrix in Pauli basis {I, X, Y, Z})
+            target: str, either 'id' or 'x' (currently supports 'id' and 'x')
+            
+        Returns:
+            fidelity (float): Process fidelity between the input superoperator and the target
+        """
+        # Normalize input superoperator
+        superop = superop / norm(superop, 'fro')
+        
+        # Define target superoperator
+        if target == 'id':
+            target_superop = np.eye(4, dtype=complex)
+        elif target == 'x180':
+            target_superop = np.array([
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, -1, 0],
+                [0, 0, 0, -1]
+            ], dtype=complex)
+        elif target == 'y180':
+            target_superop = np.array([
+                [1, 0, 0, 0],
+                [0, -1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, -1]
+            ], dtype=complex)        
+        elif target == 'x90':
+            target_superop = np.array([
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 0, -1],
+                [0, 0, 1, 0]
+            ], dtype=complex)
+        elif target == 'y90':
+            target_superop = np.array([
+                [1, 0, 0, 0],
+                [0, 0, 0, -1],
+                [0, 0, 1, 0],
+                [0, 1, 0, 0]
+            ], dtype=complex)
+        
+        else:
+            raise ValueError("Unsupported target process. Use 'id', 'x180', 'y180','x90', or 'y90'")
+        
+        target_superop = target_superop / norm(target_superop, 'fro')
+        
+        # Compute inner product (Hilbert-Schmidt)
+        fidelity = np.abs(np.trace(np.conj(superop.T) @ target_superop))
+        return fidelity
 
     # === Example ===
     # You can replace these with your own density matrices
@@ -385,6 +449,9 @@ if not node.parameters.simulate:
         print("Mitigation Superoperator (4x4 matrix):")
         print(m_superoperator)
 
+        print("Process fidelity with respect to the target process:")
+        print(f"raw: {process_fidelity(superoperator, target=operation_name):.3}")
+        print(f"mitigated: {process_fidelity(m_superoperator, target=operation_name):.3}")
     node.results["results"][q.name]['superoperator'] = superoperator
     node.results["results"][q.name]['mitigated superoperator'] = m_superoperator
 
@@ -422,3 +489,37 @@ if not node.parameters.simulate:
     node.save()
     
 # %%
+
+def pauli_expansion_single_qubit(rho: np.ndarray) -> np.ndarray:
+    I = np.array([[1, 0], [0, 1]], dtype=complex)
+    X = np.array([[0, 1], [1, 0]], dtype=complex)
+    Y = np.array([[0, -1j], [1j,  0]], dtype=complex)
+    Z = np.array([[1, 0], [0, -1]], dtype=complex)
+    P = [I, X, Y, Z]
+    vec = []
+    for i in range(4):
+        coef = 1/2 * np.trace(rho @ P[i])
+        vec.append(coef)
+
+    return np.array(vec)
+
+def build_superoperator(rho_in: any, rho_out: any) -> np.ndarray:
+    """
+    Constructs the 4x4 superoperator S such that:
+    vec(rho_out) = S @ vec(rho_in)
+
+    rho_out/rho_in: list of 4 density matrices in Puali basis (2x2)
+    """
+    # Vectorize all input and output states
+    R_in = np.column_stack([pauli_expansion_single_qubit(rho) for rho in rho_in])
+    R_out = np.column_stack([pauli_expansion_single_qubit(rho) for rho in rho_out])
+    # Solve S = R_out @ R_in^{-1}
+    try:
+        R_in_inv = np.linalg.inv(R_in)
+    except np.linalg.LinAlgError:
+        print("Warning: R_in is not invertible, using pseudo-inverse.")
+        R_in_inv = np.linalg.pinv(R_in)
+
+    S = R_out @ R_in_inv
+    return S
+

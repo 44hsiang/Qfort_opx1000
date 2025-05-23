@@ -39,14 +39,14 @@ import numpy as np
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
-    num_averages: int = 200
+    num_averages: int = 100
     operation: str = "saturation"
-    operation_amplitude_factor: Optional[float] = 1.5
+    operation_amplitude_factor: Optional[float] = 0.2
     operation_len_in_ns: Optional[int] = None
-    frequency_span_in_mhz: float = 100
-    frequency_step_in_mhz: float = 0.25
-    min_flux_offset_in_v: float = -0.02
-    max_flux_offset_in_v: float = 0.02
+    frequency_span_in_mhz: float = 200
+    frequency_step_in_mhz: float = 0.5
+    min_flux_offset_in_v: float = -0.03
+    max_flux_offset_in_v: float = 0.03
     num_flux_points: int = 41
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
@@ -63,8 +63,7 @@ node = QualibrationNode(name="03b_Qubit_Spectroscopy_vs_Flux", parameters=Parame
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
-machine = QuAM.load(path)# Generate the OPX and Octave configurations
+machine = QuAM.load()# Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:

@@ -27,20 +27,20 @@ from qiskit.visualization.bloch import Bloch
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q0']
+    qubits: Optional[List[str]] = ['q1']
     num_runs: int = 10000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    simulate: bool = True
+    simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
-    desired_state: Optional[List[float]] = None
+    desired_state: Optional[List[float]] = [np.pi,0]
 
 #theta,phi = random_bloch_state_uniform()
 
-node = QualibrationNode(name="100a_Random_state", parameters=Parameters())
+node = QualibrationNode(name="100b_Random_state", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -104,9 +104,7 @@ def QuantumMemory_program(qubit,theta=theta,phi=phi):
 
                 qubit.align()
                 qubit.xy.play("y180",amplitude_scale = theta/np.pi)
-                #qubit.xy.frame_rotation_2pi(phi/np.pi/2-0.5)
                 qubit.xy.frame_rotation_2pi((phi-qubit.extras["phi_offset"])/np.pi/2-0.5)
-
                 wait(t)             
                 align()
 
@@ -294,8 +292,8 @@ if not node.parameters.simulate:
     # %% {Update_state}
     if node.parameters.reset_type_thermal_or_active == "active":
         for i,j in zip(machine.active_qubit_names,"abcde"):
-            machine.qubits[i].xy.thread = j
-            machine.qubits[i].resonator.thread = j
+            machine.qubits[i].xy.core = j
+            machine.qubits[i].resonator.core = j
 
 # %% {Save_results}
 if not node.parameters.simulate:

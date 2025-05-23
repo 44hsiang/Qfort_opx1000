@@ -58,7 +58,7 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_triplets: List[List[str]] = [["q0","q2","q1"]]# list of lists of the qubits making up the GHZ state
+    qubit_triplets: List[List[str]] = [["q3","q2","q1"]]# list of lists of the qubits making up the GHZ state
     num_shots: int = 10000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
@@ -77,6 +77,12 @@ assert not (node.parameters.simulate and node.parameters.load_data_id is not Non
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 machine = QuAM.load()
+
+# delete the thread when using active reset
+#if node.parameters.reset_type == "active":
+for i,j in zip(machine.active_qubit_names,"abcde"):
+    machine.qubits[i].xy.core = j
+    machine.qubits[i].resonator.core = j
 
 # Get the relevant QuAM components
 
@@ -235,7 +241,6 @@ if not node.parameters.simulate:
             conf_mat = np.kron(conf_mat, q.resonator.confusion_matrix)
         # conf_mat = qp.confusion
         corrected_results[qubit_triplet.name] = np.linalg.inv(conf_mat) @ results[qubit_triplet.name]
-
         corrected_results[qubit_triplet.name] = np.where(corrected_results[qubit_triplet.name] < 0, 0, corrected_results[qubit_triplet.name])
         corrected_results[qubit_triplet.name] = corrected_results[qubit_triplet.name]/np.sum(corrected_results[qubit_triplet.name])
         print(f"{qubit_triplet.name}: {corrected_results[qubit_triplet.name]}")

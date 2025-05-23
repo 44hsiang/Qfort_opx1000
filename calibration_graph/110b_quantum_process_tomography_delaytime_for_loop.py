@@ -25,7 +25,7 @@ from qiskit.visualization.bloch import Bloch
 from time import time
 
 # %% {Node_parameters}
-sweep_time = np.arange(401,501,1).tolist()
+sweep_time = np.arange(4,501,1).tolist()
 for aa in sweep_time:
     class Parameters(NodeParameters):
         qubits: Optional[List[str]] = ['q1']
@@ -43,7 +43,6 @@ for aa in sweep_time:
     #theta,phi = random_bloch_state_uniform()
 
     node = QualibrationNode(name=f"110b_quantum_process_tomography_delaytime_{aa*4}ns", parameters=Parameters())
-
 
     # Class containing tools to help handling units and conversions.
     u = unit(coerce_to_integer=True)

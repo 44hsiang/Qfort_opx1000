@@ -58,8 +58,8 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ["q0_q2", "q1_q2"]
-    num_shots: int = 10000
+    qubit_pairs: Optional[List[str]] = ['q2_q3']
+    num_shots: int = 5000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
@@ -123,7 +123,7 @@ with program() as CPhase_Oscillations:
             machine.apply_all_flux_to_joint_idle()
         else:
             machine.apply_all_flux_to_zero()
-        wait(1000)
+        #wait(1000)
 
         with for_(n, 0, n < n_shots, n + 1):
             save(n, n_st)         
@@ -134,6 +134,7 @@ with program() as CPhase_Oscillations:
                     qp.align()
             else:
                 wait(5*qp.qubit_control.thermalization_time * u.ns)
+                pass
             qp.align()
             # Bell state
             qp.qubit_control.xy.play("y90")
@@ -145,7 +146,7 @@ with program() as CPhase_Oscillations:
             # qp.qubit_control.xy.play("x90")
             # qp.qubit_target.xy.play("x90")
             qp.align()            
-            
+            #wait(500)
             readout_state(qp.qubit_control, state_control[i])
             readout_state(qp.qubit_target, state_target[i])
             assign(state[i], state_control[i]*2 + state_target[i])
@@ -166,10 +167,14 @@ if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, CPhase_Oscillations, simulation_config)
-    job.get_simulated_samples().con1.plot()
-    node.results = {"figure": plt.gcf()}
-    node.machine = machine
-    node.save()
+    #job.get_simulated_samples().con1.plot()
+
+    samples = job.get_simulated_samples()
+    waveform_report = job.get_simulated_waveform_report()
+    waveform_report.create_plot(samples,plot=True)
+    #node.results = {"figure": plt.gcf()}
+    #node.machine = machine
+    #node.save()
 elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout ) as qm:
         job = qm.execute(CPhase_Oscillations)
@@ -204,8 +209,12 @@ if not node.parameters.simulate:
         results[qp.name] = np.array(results[qp.name])/node.parameters.num_shots
         
         conf_mat = qp.confusion
-        corrected_results[qp.name] = np.linalg.inv(conf_mat) @ results[qp.name]
-        # corrected_results[qp.name] = results[qp.name]
+        if True:
+            corrected_results[qp.name] = np.linalg.inv(conf_mat) @ results[qp.name]
+            corrected_results[qp.name] = np.where(corrected_results[qp.name] < 0, 0, corrected_results[qp.name])
+            corrected_results[qp.name] = corrected_results[qp.name]/np.sum(corrected_results[qp.name])
+        else:
+            corrected_results[qp.name] = results[qp.name] #original results
         print(f"{qp.name}: {corrected_results[qp.name]}")
 
 # %%

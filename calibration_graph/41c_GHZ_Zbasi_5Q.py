@@ -64,7 +64,7 @@ class Parameters(NodeParameters):
     reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
-    load_data_id: Optional[int] = 819
+    load_data_id: Optional[int] = None
 
 
 node = QualibrationNode(

@@ -32,17 +32,17 @@ from qiskit.visualization.bloch import Bloch
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q0']
+    qubits: Optional[List[str]] = ['q1']
     num_runs: int = 10000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     simulation_duration_ns: int = 10000
     timeout: int = 100
-    load_data_id: Optional[int] = None
+    load_data_id: Optional[int] = Nonemea
     multiplexed: bool = False
     number_of_points: int = 1
-    repeats: int = 20
+    repeats: int = 200
 
 if Parameters().load_data_id is not None:
     node  = QualibrationNode(name=f"{Parameters().load_data_id}_analyze_again", parameters=Parameters())
@@ -106,6 +106,14 @@ def data_thershold(data,n):
     avg,std = data[0],data[1]
     return avg+n*std,avg-n*std
 
+def average_to_counts(p,num):
+    N1 = p*num
+    N0 = (1-p)*num
+    return(np.array([N0,N1]))
+
+def conut_to_average(counts):
+    p = counts[1]/(counts[0]+counts[1])
+    return p
 #plotting
 def generate_bins_labels(bin_step=0.2, max_value=2*np.pi):
     bin_width = bin_step * np.pi
@@ -227,6 +235,7 @@ if not node.parameters.simulate:
     else:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
+    # %% 
     #%% add the theta and phi to the dataset
     if load_data_id is None:
         theta_list = np.array(theta_list).flatten()
@@ -241,6 +250,7 @@ if not node.parameters.simulate:
     else:
         pass
 
+    # %% mitigation
     # %% {Data_analysis}
     node.results = {"ds": ds, "figs": {}, "results": {}}
     node.results["ds"] = ds
@@ -256,7 +266,7 @@ if not node.parameters.simulate:
         # TODO : make short distance index iterable
         for j in range(2): # 1 => only phase 2 => phase and short distance
             if filter_data:
-                delete_index = np.union1d(filter_index_sd,phi_diff_sort_index[100:])
+                delete_index = np.union1d(filter_index_sd,phi_diff_sort_index[150:])
                 filter_index = np.delete(ds.n_points,delete_index.astype(int))
             else:
                 filter_index = np.arange(n_points*repeats)
@@ -284,7 +294,16 @@ if not node.parameters.simulate:
             fidelity_data = [QuantumStateAnalysis([x[i],y[i],z[i]],[theta_data[i],phi_data[i]]).fidelity for i in range(len(filter_index))]
             trace_distance_data = [QuantumStateAnalysis([x[i],y[i],z[i]],[theta_data[i],phi_data[i]]).trace_distance for i in range(len(filter_index))]
             filter_index_sd = np.where(np.abs(shortest_distance)>data_thershold([shortest_distance.mean(),shortest_distance.std()],2)[0])
-
+            
+            # mitigation
+            conf_mat = q.resonator.confusion_matrix
+            inverse_conf_mat = np.linalg.inv(conf_mat)
+            px = (1-axes[0])/2
+            py = (1-axes[1])/2
+            pz = (1-axes[2])/2 
+            mitigate_axes= [1- inverse_conf_mat[1,0]+px*(inverse_conf_mat[1,0]-inverse_conf_mat[1,1])
+                            ,1- inverse_conf_mat[1,0]+py*(inverse_conf_mat[1,0]-inverse_conf_mat[1,1])
+                            ,1- inverse_conf_mat[1,0]+pz*(inverse_conf_mat[1,0]-inverse_conf_mat[1,1])]
         analyze_results[q.name] = {
             "center": center, 
             "axes": axes, 
@@ -294,7 +313,8 @@ if not node.parameters.simulate:
             "theta_stats":theta_stats,
             "phi_stats":phi_stats,
             "fidelity_stats":[np.mean(fidelity_data),np.std(fidelity_data)],
-            "trace_distance_stats":[np.mean(trace_distance_data),np.std(trace_distance_data)] 
+            "trace_distance_stats":[np.mean(trace_distance_data),np.std(trace_distance_data)],
+            "mitigate_axes":mitigate_axes
             }
         #
         data_results[q.name] = {"theta":theta_diff[filter_index],
@@ -315,13 +335,22 @@ if not node.parameters.simulate:
 
     grid = QubitGrid(ds, [q.grid_location for q in qubits],is_3d=True)
     for ax, qubit in grid_iter(grid):
+        #original data
         x_ellipsoid_ = analyze_results[qubit['qubit']]['axes'][0] * np.outer(np.cos(u), np.sin(v))
         y_ellipsoid_ = analyze_results[qubit['qubit']]['axes'][1] * np.outer(np.sin(u), np.sin(v))
         z_ellipsoid_ = analyze_results[qubit['qubit']]['axes'][2] * np.outer(np.ones_like(u), np.cos(v))
-
         ellipsoid_points_ = np.dot(analyze_results[qubit['qubit']]['rotation_matrix'],np.array([x_ellipsoid_.ravel(), y_ellipsoid_.ravel(), z_ellipsoid_.ravel()]))
         ellipsoid_points_ += analyze_results[qubit['qubit']]['center'].reshape(-1, 1)
         x_ellipsoid_, y_ellipsoid_, z_ellipsoid_ = ellipsoid_points_.reshape(3, *x_ellipsoid_.shape)
+
+        #mitigated data
+        x_ellipsoid_m = analyze_results[qubit['qubit']]['mitigate_axes'][0] * np.outer(np.cos(u), np.sin(v))
+        y_ellipsoid_m = analyze_results[qubit['qubit']]['mitigate_axes'][1] * np.outer(np.sin(u), np.sin(v))
+        z_ellipsoid_m = analyze_results[qubit['qubit']]['mitigate_axes'][2] * np.outer(np.ones_like(u), np.cos(v))
+        ellipsoid_points_ = np.dot(analyze_results[qubit['qubit']]['rotation_matrix'],np.array([x_ellipsoid_m.ravel(), y_ellipsoid_m.ravel(), z_ellipsoid_m.ravel()]))
+        ellipsoid_points_ += analyze_results[qubit['qubit']]['center'].reshape(-1, 1)
+        x_ellipsoid_m, y_ellipsoid_m, z_ellipsoid_m = ellipsoid_points_.reshape(3, *x_ellipsoid_m.shape)
+        
         ax.scatter(
             ds.sel(qubit =qubit['qubit']).Bloch_vector_x.values[filter_index],
             ds.sel(qubit =qubit['qubit']).Bloch_vector_y.values[filter_index],
@@ -329,6 +358,8 @@ if not node.parameters.simulate:
             label="Data points", color="black", s=2
             )
         ax.plot_wireframe(x, y, z, color="blue", alpha=0.05, label=" Bloch sphere")
+        ax.plot_wireframe(x_ellipsoid_, y_ellipsoid_, z_ellipsoid_, color="red", alpha=0.08, label="fitted ellipsoid")
+        ax.plot_wireframe(x_ellipsoid_m, y_ellipsoid_m, z_ellipsoid_m, color="green", alpha=0.08, label="mitigated and fitted ellipsoid")
         ax.plot_wireframe(x_ellipsoid_, y_ellipsoid_, z_ellipsoid_, color="red", alpha=0.08, label="fitted ellipsoid")
         ax.set_title(f"{qubit['qubit']} Bloch Sphere")
     node.results["figure_Bloch_vector"] = grid.fig
@@ -347,7 +378,7 @@ if not node.parameters.simulate:
     # plot the theta and phi error
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        ax.plot(data_results[qubit['qubit']]['phi'],'.',label='fun')
+        ax.plot(data_results[qubit['qubit']]['phi'],'.',label='phi')
         #ax.plot(ds.sel(qubit=q.name).Bloch_phi.values-ds.phi.values,'.',label='direct')
         ax.plot(data_results[qubit['qubit']]['theta'],'.',label='theta')
         
@@ -387,4 +418,4 @@ if not node.parameters.simulate:
     node.machine = machine
     node.save()
 
-3# %%
+# %%
