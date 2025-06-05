@@ -4,6 +4,17 @@
 # MacOS
 .DS_Store
 
-debug.py
+# Virtual environments
+.venv
 
+# UV file
+*.toml
+*.lock
+.python-version
+
+debug.py
+main.py
+
+build/
 data/
+QPT/

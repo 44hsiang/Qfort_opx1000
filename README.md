@@ -1,28 +1,28 @@
 # N Flux-Tunable Transmon Qubits
 ## Table of Contents
 1. [Installation](#installation)
-   1. [Requirements](#requirements)
-   2. [Setup](#setup)
-      1. [Setting up the QUAM_STATE_PATH environment variable](#setting-up-the-quam_state_path-environment-variable)
-         1. [Linux](#linux)
-         2. [Mac](#mac)
-         3. [Windows](#windows)
-      2. [(Optional) Setting up the browser frontend (Qualibrate)](#setting-up-the-browser-frontend-qualibrate)
+    1. [Requirements](#requirements)
+    2. [Setup](#setup)
+        1. [Setting up the QUAM_STATE_PATH environment variable](#setting-up-the-quam_state_path-environment-variable)
+            1. [Linux](#linux)
+            2. [Mac](#mac)
+            3. [Windows](#windows)
+        2. [(Optional) Setting up the browser frontend (Qualibrate)](#setting-up-the-browser-frontend-qualibrate)
 3. [Folder structure](#folder-structure)
-   1. [calibration_data](#calibration_data)
-   2. [calibration_graph](#calibration_graph)
-   3. [configuration](#configuration)
-   4. [quam_libs](#quam_libs)
+    1. [calibration_data](#calibration_data)
+    2. [calibration_graph](#calibration_graph)
+    3. [configuration](#configuration)
+    4. [quam_libs](#quam_libs)
 4. [How to generate the QuAM](#how-to-generate-the-quam)
-   1. [1. Define the wiring](#1-define-the-wiring)
-   2. [2. The QuAM components](#2-the-quam-components)
-   3. [3. Generating the QuAM and state.json](#3-generating-the-quam-and-statejson)
-   4. [4. Updating the parameters of state.json](#4-updating-the-parameters-of-statejson)
+    1. [1. Define the wiring](#1-define-the-wiring)
+    2. [2. The QuAM components](#2-the-quam-components)
+    3. [3. Generating the QuAM and state.json](#3-generating-the-quam-and-statejson)
+    4. [4. Updating the parameters of state.json](#4-updating-the-parameters-of-statejson)
 5. [How to run Qualibrate nodes](#how-to-run-qualibrate-nodes)
-   1. [Node structure](#node-structure)
-   2. [Execution](#execution)
-      1. [As standalone python scripts](#as-standalone-python-scripts)
-      2. [Within Qualibrate](#within-qualibrate)
+    1. [Node structure](#node-structure)
+    2. [Execution](#execution)
+        1. [As standalone python scripts](#as-standalone-python-scripts)
+        2. [Within Qualibrate](#within-qualibrate)
 
 
 ## Installation
@@ -82,11 +82,11 @@ The `QUAM_STATE_PATH` environment variable is now set up globally on your system
 
 ## Setting up the browser frontend (Qualibrate)
 > **_NOTE:_**  For more detailed and up-to-date documentation about Qualibrate, see the [documentation](https://qua-platform.github.io/qualibrate/).
- 
-While the calibration nodes are runnable as individual scripts, they can also be run through a browser. The frontend 
+
+While the calibration nodes are runnable as individual scripts, they can also be run through a browser. The frontend
 also allows for the execution of calibration graphs.
 
-During the installation of `quam_libs`, the requirement `qualibrate` was installed. We can use the command-line to 
+During the installation of `quam_libs`, the requirement `qualibrate` was installed. We can use the command-line to
 generate a config for `qualibrate` which points the frontend application to our calibration nodes directory as follows:
 ```sh
 # change into the folder containing the `calibration_graph`
@@ -104,7 +104,7 @@ To verify that `qualibrate` installed correctly, you can launch the web interfac
 ```shell
 qualibrate start
 ```
-Then, open a browser to http://127.0.0.1:8001, where you should see the list of calibration nodes stored in the 
+Then, open a browser to http://127.0.0.1:8001, where you should see the list of calibration nodes stored in the
 `calibration_graph` directory.
 
 ## Folder structure
@@ -146,9 +146,9 @@ The structure of the nodes is described below.
 The configuration folder contains the python scripts used to build the QUAM before starting the experiments.
 It contains three files whose working principles are explained in more details below:
 * __make_wiring__: create the port mapping between the control hardware (OPX+, Octave, OPX1000 LF fem, MW fem) and the quantum elements (qubits, resonators, flux lines...).
-  * [make_wiring_lffem_mwfem.py](./configuration/make_wiring_lffem_mwfem.py) for a cluster made of LF and MW FEMs (OPX1000).
-  * [make_wiring_lffem_octave.py](./configuration/make_wiring_lffem_octave.py) for a cluster made of LF-FEMs and Octaves (OPX1000).
-  * [make_wiring_opxp_octave.py](./configuration/make_wiring_opxp_octave.py) for a cluster made of OPX+ and Octaves.
+    * [make_wiring_lffem_mwfem.py](./configuration/make_wiring_lffem_mwfem.py) for a cluster made of LF and MW FEMs (OPX1000).
+    * [make_wiring_lffem_octave.py](./configuration/make_wiring_lffem_octave.py) for a cluster made of LF-FEMs and Octaves (OPX1000).
+    * [make_wiring_opxp_octave.py](./configuration/make_wiring_opxp_octave.py) for a cluster made of OPX+ and Octaves.
 * [make_quam.py](./configuration/make_quam.py): create the state of the system based on the generated wiring and QUAM components and containing all the information necessary to calibrate the chip and run experiments. This state is used to generate the OPX configuration.
 * [modify_quam.py](./configuration/modify_quam.py): update the parameters of the state programmatically based on defaults values (previous calibration, chip manufacturer specification...).
 
@@ -296,38 +296,38 @@ machine.wiring = QuamDict({})
 # ^^^
 
 mw_out = MWChannel(
-   id = "mw_out",
-   operations = {
-      "cw": SquarePulse(amplitude=1, length=100),
-      "readout": SquareReadoutPulse(amplitude=0.2, length=100), },
-   opx_output = MWFEMAnalogOutputPort(
-      controller_id="con1", fem_id=1, port_id=2, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
-   ),
-   upconverter=1,
-   intermediate_frequency=20e6
+    id = "mw_out",
+    operations = {
+        "cw": SquarePulse(amplitude=1, length=100),
+        "readout": SquareReadoutPulse(amplitude=0.2, length=100), },
+    opx_output = MWFEMAnalogOutputPort(
+        controller_id="con1", fem_id=1, port_id=2, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
+    ),
+    upconverter=1,
+    intermediate_frequency=20e6
 )
 mw_in = InOutMWChannel(
-   id = "mw_in",
-   operations = {
-      "readout": SquareReadoutPulse(amplitude=0.1, length=100), },
-   opx_output = MWFEMAnalogOutputPort(
-      controller_id="con1", fem_id=1, port_id=1, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
-   ),
-   opx_input = MWFEMAnalogInputPort(
-      controller_id="con1", fem_id=1, port_id=1, band=1, downconverter_frequency=int(3e9)
-   ),
-   upconverter=1,
-   time_of_flight=28,
-   intermediate_frequency=10e6
+    id = "mw_in",
+    operations = {
+        "readout": SquareReadoutPulse(amplitude=0.1, length=100), },
+    opx_output = MWFEMAnalogOutputPort(
+        controller_id="con1", fem_id=1, port_id=1, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
+    ),
+    opx_input = MWFEMAnalogInputPort(
+        controller_id="con1", fem_id=1, port_id=1, band=1, downconverter_frequency=int(3e9)
+    ),
+    upconverter=1,
+    time_of_flight=28,
+    intermediate_frequency=10e6
 )
 
 machine.qubits["dummy_out"] = mw_out
 machine.qubits["dummy_in"] = mw_in
 
 with program() as prog:
-   mw_out.play("cw")
-   mw_in.align()
-   mw_in.play("readout")
+    mw_out.play("cw")
+    mw_in.align()
+    mw_in.play("readout")
 
 config = machine.generate_config()
 qmm = machine.connect()
@@ -342,7 +342,7 @@ machine.save("dummy_state.json")
 # %%
 # View the corresponding "raw-QUA" config
 with open("dummy_qua_config.json", "w+") as f:
-   json.dump(machine.generate_config(), f, indent=4)
+    json.dump(machine.generate_config(), f, indent=4)
 ```
 ### [4. Updating the parameters of state.json](./configuration/modify_quam.py)
 Once the state is created, each parameter can be updated based on the desired initial values using
@@ -367,10 +367,10 @@ rr_if = rr_freq - rr_LO
 rr_max_power_dBm = -8
 
 for i, q in enumerate(machine.qubits):
-   machine.qubits[q].resonator.opx_output.full_scale_power_dbm = rr_max_power_dBm
-   machine.qubits[q].resonator.opx_output.upconverter_frequency = rr_LO
-   machine.qubits[q].resonator.opx_input.downconverter_frequency = rr_LO
-   machine.qubits[q].resonator.intermediate_frequency = rr_if[i]
+    machine.qubits[q].resonator.opx_output.full_scale_power_dbm = rr_max_power_dBm
+    machine.qubits[q].resonator.opx_output.upconverter_frequency = rr_LO
+    machine.qubits[q].resonator.opx_input.downconverter_frequency = rr_LO
+    machine.qubits[q].resonator.intermediate_frequency = rr_if[i]
 
 # %%
 # save into state.json
@@ -379,7 +379,7 @@ save_machine(machine, path)
 # %%
 # View the corresponding "raw-QUA" config
 with open("qua_config.json", "w+") as f:
-   json.dump(machine.generate_config(), f, indent=4)
+    json.dump(machine.generate_config(), f, indent=4)
 ````
 
 Note that these parameters serve as a starting point before starting to calibrate the chip and their values will be
@@ -388,7 +388,7 @@ updated at the end of each calibration node.
 ## How to run Qualibrate nodes
 ### Node structure
 > **_NOTE:_**  For the most detailed and up-to-date documentation on calibration nodes, visit the QUAlibrate [documentation](https://qua-platform.github.io/qualibrate/calibration_nodes/).
-> 
+>
 Qualibrate provides a framework to convert any old calibration script into a calibration **node** to be used within
 a calibration graph, whilst maintaining its ability to be run standalone. The core elements of this framework are as
 follows:
@@ -414,7 +414,7 @@ node.results = {...}  # a dictionary with any result data you like (including fi
 # 4. Save the results
 node.save()
 ```
-After executing the node, results will be saved at the `<path_to_your_data_folder>`, as well as being viewable on the 
+After executing the node, results will be saved at the `<path_to_your_data_folder>`, as well as being viewable on the
 web app.
 
 #### Additional Feature: Interactive calibration
@@ -425,7 +425,7 @@ with node.record_state_updates():
     # Modify the resonance frequency of a qubit
     machine.qubits["q0"].f_01 = 5.1e9
 ```
-This will simply update the values if the script is executed normally. However, if the node is executed through the 
+This will simply update the values if the script is executed normally. However, if the node is executed through the
 QUAlibrate Web App, any changes will be presented as a proposed state update to the user, allowing them to interactively accept or decline the changes based on the measurement outcomes.
 
 ### Execution
