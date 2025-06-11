@@ -18,7 +18,7 @@ class Parameters(NodeParameters):
 node = QualibrationNode(name="00_Close_other_QMs", parameters=Parameters())
 
 # Instantiate the QuAM class from the state file
-machine = QuAM.load()
+machine = QuAM.load()  # Keep brackets empty when env vars are set.
 
 # Generate the OPX and Octave configurations
 config = machine.generate_config()

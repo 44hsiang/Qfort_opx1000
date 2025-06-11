@@ -135,7 +135,7 @@ class ReadoutResonatorMW(InOutMWChannel, ReadoutResonatorBase):
             operation (Optional[str]): The operation for which the power setting is applied.
 
         """
-        return set_output_power(self, power_in_dbm, full_scale_power_dbm, max_amplitude, operation)
+        return set_output_power_mw_channel(self, power_in_dbm, operation, full_scale_power_dbm, max_amplitude)
 
 
 ReadoutResonator = ReadoutResonatorIQ

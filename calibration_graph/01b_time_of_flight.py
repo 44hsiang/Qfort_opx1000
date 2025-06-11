@@ -48,7 +48,7 @@ node = QualibrationNode(name="01b_Time_of_Flight", parameters=Parameters())
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load()
+machine = QuAM.load()  # Keep brackets empty when env vars are set.
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":

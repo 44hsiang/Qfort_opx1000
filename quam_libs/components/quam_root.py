@@ -54,6 +54,7 @@ class QuAM(QuamRoot):
     qmm: ClassVar[Optional[QuantumMachinesManager]] = None
     twpa: Optional[MWChannel] = None
 
+    # twpa_run() function will be deprecated in the future version.
     def twpa_run(self):
         self.twpa.play("const")
 
