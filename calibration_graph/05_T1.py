@@ -34,7 +34,7 @@ import numpy as np
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ['q0']
+    qubits: Optional[List[str]] = ["q0","q1","q2","q3","q4"]
     num_averages: int = 500
     min_wait_time_in_ns: int = 16
     max_wait_time_in_ns: int = 100000
@@ -55,7 +55,7 @@ node = QualibrationNode(name="05_T1", parameters=Parameters())
 # Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load()
+machine = QuAM.load()  # Keep brackets empty when env vars are set.
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP

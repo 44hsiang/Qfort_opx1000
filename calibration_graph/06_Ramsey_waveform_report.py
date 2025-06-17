@@ -58,8 +58,7 @@ node = QualibrationNode(
 # %% {Initialize_QuAM_and_QOP}
 u = unit(coerce_to_integer=True)
 
-# path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
-machine = QuAM.load()
+machine = QuAM.load()  # Keep brackets empty when env vars are set.
 
 qubits = machine.get_qubits_used_in_node(node.parameters)
 num_qubits = len(qubits)

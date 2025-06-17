@@ -64,7 +64,7 @@ node = QualibrationNode(name="04_Power_Rabi", parameters=Parameters())
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load()
+machine = QuAM.load()  # Keep brackets empty when env vars are set.
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP

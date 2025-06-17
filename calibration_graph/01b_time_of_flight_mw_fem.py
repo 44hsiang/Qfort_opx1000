@@ -84,7 +84,7 @@ with program() as raw_trace_prog:
     for i, rr in enumerate(resonators):
         with for_(n, 0, n < node.parameters.num_averages, n + 1):
             # Reset the phase of the digital oscillator associated to the resonator element. Needed to average the cosine signal.
-            reset_phase(rr.name)
+            reset_if_phase(rr.name)
             # Measure the resonator (send a readout pulse and record the raw ADC trace)
             rr.measure("readout", stream=adc_st[i])
             # Wait for the resonator to deplete

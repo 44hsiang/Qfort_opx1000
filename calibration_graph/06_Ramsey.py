@@ -60,7 +60,7 @@ node = QualibrationNode(
 # %% {Initialize_QuAM_and_QOP}
 u = unit(coerce_to_integer=True)
 
-machine = QuAM.load()
+machine = QuAM.load()  # Keep brackets empty when env vars are set.
 
 qubits = machine.get_qubits_used_in_node(node.parameters)
 num_qubits = len(qubits)

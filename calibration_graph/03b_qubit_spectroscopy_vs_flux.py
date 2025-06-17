@@ -63,7 +63,8 @@ node = QualibrationNode(name="03b_Qubit_Spectroscopy_vs_Flux", parameters=Parame
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load()# Generate the OPX and Octave configurations
+machine = QuAM.load()  # Keep brackets empty when env vars are set.
+# Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP
 if node.parameters.load_data_id is None:

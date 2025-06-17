@@ -61,8 +61,7 @@ node = QualibrationNode(name="08_Ramsey_vs_Flux_Calibration", parameters=Paramet
 # Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
-machine = QuAM.load(path)
+machine = QuAM.load()  # Keep brackets empty when env vars are set.
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP

@@ -51,6 +51,7 @@ class Parameters(NodeParameters):
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
+    load_data_id: Optional[int] = None
     multiplexed: bool = True
 
 
@@ -61,7 +62,7 @@ node = QualibrationNode(name="07b_IQ_Blobs", parameters=Parameters())
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load()
+machine = QuAM.load()  # Keep brackets empty when env vars are set.
 
 #%%
 '''
