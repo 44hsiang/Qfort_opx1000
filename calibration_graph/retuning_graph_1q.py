@@ -11,7 +11,7 @@ class Parameters(GraphParameters):
     qubits: List[str] = None
 
 
-qubits = ["q0"]
+qubits = ["q2"]
 multiplexed = False
 reset_type_thermal_or_active = "thermal"
 
