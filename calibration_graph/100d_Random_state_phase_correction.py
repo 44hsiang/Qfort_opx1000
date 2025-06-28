@@ -29,7 +29,7 @@ from qiskit.visualization.bloch import Bloch
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q0']
+    qubits: Optional[List[str]] = ['q3']
     num_runs: int = 40000
     min_wait_time_in_ns: int = 16
     max_time_in_ns: int = 200
@@ -52,8 +52,7 @@ node = QualibrationNode(name="100d_Random_state_phase_correction", parameters=Pa
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
-machine = QuAM.load(path)
+machine = QuAM.load()
 
 #%%
 # delete the thread when using active reset
@@ -154,6 +153,7 @@ if node.parameters.simulate:
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
+    plt.show()
     # Save the figure
     node.results = {"figure": plt.gcf()}
     node.machine = machine
@@ -207,6 +207,7 @@ if not node.parameters.simulate:
         ax.set_xlabel('time_delay(ns)')
 
     node.results["figure_phase"] = grid.fig
+    plt.show()
     grid = QubitGrid(ds, [q.grid_location for q in qubits],is_3d=True)
     for ax, qubit in grid_iter(grid):
         bloch = Bloch(axes=ax,font_size=12)
@@ -216,6 +217,7 @@ if not node.parameters.simulate:
         bloch.vector_color = ['r','b','g']
         bloch.vector_labels = ['raw','mitigated','ideal']
         bloch.render(title=qubit['qubit'])
+    plt.show()
     node.results["figure_Bloch_vector"] = grid.fig
     # %% {Update_state}
     if not node.parameters.simulate:

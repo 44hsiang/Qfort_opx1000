@@ -27,7 +27,7 @@ from qiskit.visualization.bloch import Bloch
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q1']
+    qubits: Optional[List[str]] = ['q3']
     num_runs: int = 10000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
@@ -36,7 +36,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
-    desired_state: Optional[List[float]] = [np.pi,0]
+    desired_state: Optional[List[float]] = [np.pi/2,0]
 
 #theta,phi = random_bloch_state_uniform()
 
