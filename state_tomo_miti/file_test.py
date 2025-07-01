@@ -5,9 +5,12 @@ file_test.py:
 """
 import xarray as xr
 import numpy as np
+from quam_libs.quantum_memory.marcos import dm_checker
 
-a = np.load("./arrays.npz")
-print(a["results.q3.density_matrix"])
+a = np.load("./arrays_0628.npz")
+# print(a["results.q3.density_matrix"])
+# print(a["results.q3.density_matrix_mitigation"])
 
-b = xr.open_dataset("./ds.h5")
-print(b.state.shape)
+dmm = a["results.q3.density_matrix_mitigation"]
+print(dmm[0])
+print(dm_checker(dmm[0]))

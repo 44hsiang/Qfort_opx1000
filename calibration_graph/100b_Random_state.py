@@ -36,7 +36,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
-    desired_state: Optional[List[float]] = [np.pi/2,0]
+    desired_state: Optional[List[float]] = [np.pi/4, np.pi/4]
 
 #theta,phi = random_bloch_state_uniform()
 

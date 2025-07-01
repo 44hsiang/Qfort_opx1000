@@ -16,6 +16,7 @@ from qualang_tools.units import unit
 from qm import SimulationConfig
 from qm.qua import *
 from typing import Literal, Optional, List
+from qualang_tools.bakery import baking
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
@@ -32,12 +33,12 @@ class Parameters(NodeParameters):
     num_runs: int = 10000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    simulate: bool = False
-    simulation_duration_ns: int = 10000
+    simulate: bool = True
+    simulation_duration_ns: int = 20000
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
-    interaction_time_ns: int = 48
+    interaction_time_ns: int = 0
     desired_state: Optional[List[List[float]]] = [[0,0],[np.pi,0],[np.pi/2,0],[np.pi/2,np.pi/2]]
 
 #theta,phi = random_bloch_state_uniform()
@@ -119,7 +120,14 @@ def QuantumMemory_program(qubit):
                 with if_(initial_state == 0):
                     #|0>
                     with for_(tomo_axis, 0, tomo_axis < 3, tomo_axis + 1):
-                        active_reset(qubit, "readout",max_attempts=15,wait_time=500)
+                        if node.parameters.simulate:
+                            pass
+                        elif reset_type == "active":
+                            active_reset(qubit, "readout", max_attempts=15, wait_time=500)
+                        elif reset_type == "thermal":
+                            qubit.wait(4 * qubit.thermalization_time * u.ns)
+                        else:
+                            raise ValueError(f"Unrecognized reset type {reset_type}.")
                         align()
                         wait(10)
                         #initial state |0>
@@ -141,7 +149,14 @@ def QuantumMemory_program(qubit):
                 with if_(initial_state == 1):
                     #|1>
                     with for_(tomo_axis, 0, tomo_axis < 3, tomo_axis + 1):
-                        active_reset(qubit, "readout",max_attempts=15,wait_time=500)
+                        if node.parameters.simulate:
+                            pass
+                        elif reset_type == "active":
+                            active_reset(qubit, "readout", max_attempts=15, wait_time=500)
+                        elif reset_type == "thermal":
+                            qubit.wait(4 * qubit.thermalization_time * u.ns)
+                        else:
+                            raise ValueError(f"Unrecognized reset type {reset_type}.")
                         qubit.align()
                         wait(10)
                         #initial state |1>
@@ -167,7 +182,14 @@ def QuantumMemory_program(qubit):
                 with if_(initial_state == 2):
                     #|+>
                     with for_(tomo_axis, 0, tomo_axis < 3, tomo_axis + 1):
-                        active_reset(qubit, "readout",max_attempts=15,wait_time=500)
+                        if node.parameters.simulate:
+                            pass
+                        elif reset_type == "active":
+                            active_reset(qubit, "readout", max_attempts=15, wait_time=500)
+                        elif reset_type == "thermal":
+                            qubit.wait(4 * qubit.thermalization_time * u.ns)
+                        else:
+                            raise ValueError(f"Unrecognized reset type {reset_type}.")
                         align()
                         wait(10)
                         #initial state |+>
@@ -193,7 +215,14 @@ def QuantumMemory_program(qubit):
                 with if_(initial_state == 3):
                     #i|+>
                     with for_(tomo_axis, 0, tomo_axis < 3, tomo_axis + 1):
-                        active_reset(qubit, "readout",max_attempts=15,wait_time=500)
+                        if node.parameters.simulate:
+                            pass
+                        elif reset_type == "active":
+                            active_reset(qubit, "readout", max_attempts=15, wait_time=500)
+                        elif reset_type == "thermal":
+                            qubit.wait(4 * qubit.thermalization_time * u.ns)
+                        else:
+                            raise ValueError(f"Unrecognized reset type {reset_type}.")
                         qubit.align()
                         #initial state i|+>
                         qubit.xy.play("-x90")
@@ -231,7 +260,7 @@ def QuantumMemory_program(qubit):
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns)  # In clock cycles = 4ns
     job = qmm.simulate(config, QuantumMemory_program(qubits[0]), simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()
@@ -449,7 +478,7 @@ if not node.parameters.simulate:
 
         # Display result
         np.set_printoptions(precision=3, suppress=True)
-        print(f"operation name: {operation_name}")
+        # print(f"operation name: {operation_name}")
         print("Superoperator (4x4 matrix):")
         print(superoperator)
 
@@ -496,6 +525,7 @@ if not node.parameters.simulate:
             bloch.vector_labels = ['raw','mitigated','ideal']
             bloch.render(title=qubit['qubit']+'_'+initial_state)
         node.results["figs"][qubit['qubit']+'_'+initial_state] = grid.fig
+        plt.show()
     # %% {Update_state}
     if node.parameters.reset_type_thermal_or_active == "active":
         for i,j in zip(machine.active_qubit_names,"abcde"):

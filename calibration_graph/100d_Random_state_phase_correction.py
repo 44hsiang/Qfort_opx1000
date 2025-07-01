@@ -30,9 +30,9 @@ from qiskit.visualization.bloch import Bloch
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = ['q3']
-    num_runs: int = 40000
+    num_runs: int = 10000
     min_wait_time_in_ns: int = 16
-    max_time_in_ns: int = 200
+    max_time_in_ns: int = 80
     wait_time_step_in_ns: int = 4
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
@@ -194,7 +194,7 @@ if not node.parameters.simulate:
     fit_results = {}
     for q in qubits:
         fit_results[q.name]={}
-        params, covariance = curve_fit(linear_func, ds.timedelay, ds.sel(qubit=q.name).Bloch_phi)
+        params, covariance = curve_fit(linear_func, ds.timedelay, np.unwrap(ds.sel(qubit=q.name).Bloch_phi) % 180)
         fit_results[q.name]["slope"] = params[0]
         fit_results[q.name]["intercept"] = params[1]
     

@@ -34,6 +34,7 @@ from qm.qua import *
 from typing import Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
+import xarray as xr
 
 
 # %% {Node_parameters}
@@ -41,7 +42,7 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_averages: int = 200
-    frequency_span_in_mhz: float = 15.0
+    frequency_span_in_mhz: float = 50.0
     frequency_step_in_mhz: float = 0.05
     simulate: bool = False
     simulation_duration_ns: int = 2500
@@ -137,9 +138,11 @@ if node.parameters.simulate:
 elif node.parameters.load_data_id is None:
     # Open a quantum machine to execute the QUA program
     import time
+    # TODO: Automatically save TWPA pumping in state.json
+    # TODO: Find good properties for every qubits
     addr = 'TCPIP::192.168.50.12::INSTR'
-    TWPA_fre = 6.155e9
-    TWPA_gain = 1.1
+    TWPA_fre = 6.175e9
+    TWPA_gain = -2
     open_TWPA(addr=addr,power=True,pump_frequency=TWPA_fre,gain=TWPA_gain)
     f_span = 10e6
     frequency_sweep = np.linspace(TWPA_fre-f_span,TWPA_fre+f_span,9)
@@ -202,6 +205,7 @@ if not node.parameters.simulate:
     grid.fig.suptitle("Resonator spectroscopy (raw data)")
     plt.legend(loc="upper left", bbox_to_anchor=(1, 1))
     plt.tight_layout()
+    plt.show()
     node.results["raw_amplitude"] = grid.fig
 
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
@@ -214,12 +218,13 @@ if not node.parameters.simulate:
     grid.fig.suptitle("Resonator spectroscopy (raw data)")
     plt.tight_layout()
     node.results["raw_phase"] = grid.fig
+    plt.show()
 
 
     # %% {Update_state}
     if node.parameters.load_data_id is None:
         with node.record_state_updates():
-            open_TWPA(addr=addr,power=True,pump_frequency=6.165e9,gain=0.65)
+            open_TWPA(addr=addr,power=True,pump_frequency=6.165e9,gain=-0.75)
 
         # %% {Save_results}
         node.outcomes = {q.name: "successful" for q in qubits}

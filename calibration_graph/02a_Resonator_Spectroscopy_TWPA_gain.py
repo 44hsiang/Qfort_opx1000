@@ -138,9 +138,11 @@ if node.parameters.simulate:
 elif node.parameters.load_data_id is None:
     # Open a quantum machine to execute the QUA program
     import time
+    # TODO: Automatically save TWPA pumping in state.json
+    # TODO: Find good properties for every qubits
     addr = 'TCPIP::192.168.50.12::INSTR'
-    TWPA_fre = 6.165e9
-    TWPA_gain = 1.1
+    TWPA_fre = 6.185e9
+    TWPA_gain = -2
     open_TWPA(addr=addr,power=True,pump_frequency=TWPA_fre,gain=TWPA_gain)
     g_span = 1
     gain_sweep = np.linspace(TWPA_gain-g_span,TWPA_gain+g_span,9)
@@ -203,6 +205,7 @@ if not node.parameters.simulate:
     grid.fig.suptitle("Resonator spectroscopy (raw data)")
     plt.legend(loc="upper left", bbox_to_anchor=(1, 1))
     plt.tight_layout()
+    plt.show()
     node.results["raw_amplitude"] = grid.fig
 
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
@@ -214,13 +217,14 @@ if not node.parameters.simulate:
         ax.set_title(qubit["qubit"])
     grid.fig.suptitle("Resonator spectroscopy (raw data)")
     plt.tight_layout()
+    plt.show()
     node.results["raw_phase"] = grid.fig
 
 
     # %% {Update_state}
     if node.parameters.load_data_id is None:
         with node.record_state_updates():
-            open_TWPA(addr=addr,power=True,pump_frequency=TWPA_fre,gain=0.65)
+            open_TWPA(addr=addr,power=True,pump_frequency=TWPA_fre,gain=-0.75)
 
         # %% {Save_results}
         node.outcomes = {q.name: "successful" for q in qubits}

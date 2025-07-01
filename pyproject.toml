@@ -19,6 +19,7 @@ dependencies = [
     "qualibrate==0.2.0",
     "quam",
     "qutip>=5.2.0",
+    "rsinstrument>=1.102.0",
     "tqdm>=4.67.1",
     "xarray>=2025.4.0",
 ]

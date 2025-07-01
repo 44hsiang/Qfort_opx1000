@@ -28,7 +28,7 @@ import xarray as xr
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = ["q3"]
     num_averages: int = 60000
-    operation: Literal["x180", "x90", "y90", "-x90","-y90"] = None
+    operation: Literal["x180", "x90", "y90", "-x90","-y90"] = "x180"
     delay: List[int] = [0, 200, 1000, 5000, 20000]  # delay time must be larger than 4
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
@@ -173,6 +173,8 @@ elif node.parameters.load_data_id is None:
         coef_MLE = np.array(coef_MLE)
 
     ds.state.values = 1 - 2 * ds.state.values
+    if mitigation:
+        coef_MLE = 1 - 2 * coef_MLE
 
     I = np.array([[1, 0], [0, 1]], dtype=complex)
     X = np.array([[0, 1], [1, 0]], dtype=complex)
