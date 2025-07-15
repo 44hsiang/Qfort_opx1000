@@ -11,7 +11,7 @@ class Parameters(GraphParameters):
     qubits: List[str] = None
 
 
-qubits = ["q3"]
+qubits = ["q0"]
 multiplexed = False
 reset_type_thermal_or_active = "thermal"
 
@@ -46,6 +46,7 @@ g = QualibrationGraph(
             flux_point_joint_or_independent="joint",
             name="IQ_blob_thermal",
             reset_type_thermal_or_active=reset_type_thermal_or_active,
+            readout_scale = 1.0,
         ),
         "IQ_blob_active": library.nodes["07b_IQ_Blobs1"].copy(
             qubits = qubits,
@@ -53,6 +54,7 @@ g = QualibrationGraph(
             multiplexed=multiplexed,
             name="IQ_blob_active",
             reset_type_thermal_or_active="active",
+            readout_scale = 1.0,
         ),
         "T1": library.nodes["05_T1"].copy(
             qubits = qubits,

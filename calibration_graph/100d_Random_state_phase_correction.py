@@ -29,10 +29,10 @@ from qiskit.visualization.bloch import Bloch
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q3']
+    qubits: Optional[List[str]] = ['q1']
     num_runs: int = 10000
     min_wait_time_in_ns: int = 16
-    max_time_in_ns: int = 80
+    max_time_in_ns: int = 200
     wait_time_step_in_ns: int = 4
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
@@ -103,7 +103,7 @@ def QuantumMemory_program(qubit,theta=theta,phi=phi):
                 with for_(tomo_axis, 0, tomo_axis < 3, tomo_axis + 1):
 
                     if reset_type == "active":
-                        active_reset(qubit, "readout",max_attempts=15,wait_time=500)
+                        active_reset(qubit, "readout",max_attempts=100,wait_time=100)
                     elif reset_type == "thermal":
                         qubit.wait(4 * qubit.thermalization_time * u.ns)
                     else:

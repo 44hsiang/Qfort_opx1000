@@ -40,8 +40,8 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ["q3"]
-    num_averages: int = 100
+    qubits: Optional[List[str]] = None
+    num_averages: int = 500
     operation_x180_or_any_90: Literal["x180","y180", "x90", "-x90", "y90", "-y90"] = "x180"
     min_amp_factor: float = 0.0
     max_amp_factor: float = 1.99
@@ -124,7 +124,7 @@ with program() as power_rabi:
                 with for_(*from_array(a, amps)):
                     # Initialize the qubits
                     if reset_type == "active":
-                        active_reset(qubit, "readout")
+                        active_reset(qubit, "readout",max_attempts=100,wait_time=100)
                     else:
                         qubit.wait(qubit.thermalization_time * u.ns)
 
@@ -307,7 +307,7 @@ if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         with node.record_state_updates():
             for q in qubits:
-                q.xy.operations[operation].amplitude = fit_results[q.name]["Pi_amplitude"]
+                q.xy.operations["x180"].amplitude = fit_results[q.name]["Pi_amplitude"]
                 if node.parameters.update_x90:
                     q.xy.operations["x90"].amplitude = fit_results[q.name]["Pi_amplitude"] / 2
 

@@ -10,7 +10,7 @@ from quam_libs.quantum_memory.marcos import dm_checker
 a = np.load("./arrays_0628.npz")
 # print(a["results.q3.density_matrix"])
 # print(a["results.q3.density_matrix_mitigation"])
-
+np.linalg.eigh(a["eig_vals"])
 dmm = a["results.q3.density_matrix_mitigation"]
 print(dmm[0])
 print(dm_checker(dmm[0]))

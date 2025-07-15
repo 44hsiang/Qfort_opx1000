@@ -33,12 +33,12 @@ class Parameters(NodeParameters):
     num_runs: int = 10000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    simulate: bool = True
+    simulate: bool = False
     simulation_duration_ns: int = 20000
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
-    interaction_time_ns: int = 0
+    interaction_time_ns: int = 44
     desired_state: Optional[List[List[float]]] = [[0,0],[np.pi,0],[np.pi/2,0],[np.pi/2,np.pi/2]]
 
 #theta,phi = random_bloch_state_uniform()
@@ -291,7 +291,7 @@ if not node.parameters.simulate:
             #job_[0].result_handles.get('state1').fetch_all()
         extract_state = ds.state.values['value']
         ds = ds.assign_coords(axis=("axis", ['x', 'y', 'z']))
-        ds = ds.assign_coords(initial_state=("initial_state", ['|0>', '|1>', '|+>', 'i|+>']))
+        ds = ds.assign_coords(initial_state=("initial_state", ['0', '1', '+', 'i+']))
         ds['state'] = (["qubit","N",'initial_state', "axis"], extract_state)
     else:
         node = node.load_from_id(node.parameters.load_data_id)
@@ -357,7 +357,7 @@ if not node.parameters.simulate:
             mitigate_data[q.name]['Bloch vector'] = m_results.bloch_vector
             mitigate_data[q.name]['fidelity'] = m_results.fidelity
             mitigate_data[q.name]['trace_distance'] = m_results.trace_distance
-        desired_state_name = ['|0>', '|1>', '|+>', 'i|+>']
+        desired_state_name = ['0', '1', '+', 'i+']
         node.results["results"][q.name] = {
             desired_state_name[i]:{
                 'raw':data[q.name][desired_state_name[i]],
@@ -464,10 +464,10 @@ if not node.parameters.simulate:
     rho_plus_i = 0.5 * np.array([[1, -1j], [1j, 1]])  # |+i><+i|
     for q in qubits:
         # Output density matrices (replace these with your actual measurements)
-        rho_out_0 = data[q.name]['|0>']['denstiy matrix']
-        rho_out_1 = data[q.name]['|1>']['denstiy matrix']
-        rho_out_plus = data[q.name]['|+>']['denstiy matrix']
-        rho_out_plus_i = data[q.name]['i|+>']['denstiy matrix']
+        rho_out_0 = data[q.name]['0']['denstiy matrix']
+        rho_out_1 = data[q.name]['1']['denstiy matrix']
+        rho_out_plus = data[q.name]['+']['denstiy matrix']
+        rho_out_plus_i = data[q.name]['i+']['denstiy matrix']
 
         # Pack them into lists
         inputs = [rho_0, rho_1, rho_plus, rho_plus_i]
@@ -482,10 +482,10 @@ if not node.parameters.simulate:
         print("Superoperator (4x4 matrix):")
         print(superoperator)
 
-        rho_out_0 = mitigate_data[q.name]['|0>']['denstiy matrix']
-        rho_out_1 = mitigate_data[q.name]['|1>']['denstiy matrix']
-        rho_out_plus = mitigate_data[q.name]['|+>']['denstiy matrix']
-        rho_out_plus_i = mitigate_data[q.name]['i|+>']['denstiy matrix']
+        rho_out_0 = mitigate_data[q.name]['0']['denstiy matrix']
+        rho_out_1 = mitigate_data[q.name]['1']['denstiy matrix']
+        rho_out_plus = mitigate_data[q.name]['+']['denstiy matrix']
+        rho_out_plus_i = mitigate_data[q.name]['i+']['denstiy matrix']
 
         # Pack them into lists
         inputs = [rho_0, rho_1, rho_plus, rho_plus_i]

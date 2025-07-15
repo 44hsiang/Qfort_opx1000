@@ -141,7 +141,7 @@ elif node.parameters.load_data_id is None:
     # TODO: Automatically save TWPA pumping in state.json
     # TODO: Find good properties for every qubits
     addr = 'TCPIP::192.168.50.12::INSTR'
-    TWPA_fre = 6.185e9
+    TWPA_fre = 6.175e9
     TWPA_gain = -2
     open_TWPA(addr=addr,power=True,pump_frequency=TWPA_fre,gain=TWPA_gain)
     g_span = 1

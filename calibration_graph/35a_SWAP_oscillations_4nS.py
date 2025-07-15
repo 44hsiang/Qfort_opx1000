@@ -53,7 +53,7 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ['q0_q2']
+    qubit_pairs: Optional[List[str]] = ['q1_q2']
     num_averages: int = 100
     max_time_in_ns: int = 160
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"

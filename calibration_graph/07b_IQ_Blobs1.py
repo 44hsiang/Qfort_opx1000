@@ -43,11 +43,12 @@ import xarray as xr
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ["q3"]
+    qubits: Optional[List[str]] = ["q1"]
     num_runs: int = 60000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     operation_name: str = "readout"  # or "readout_QND"
+    readout_scale: float = 1 # (-2, 2]
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
@@ -88,12 +89,14 @@ num_qubits = len(qubits)
 # %% {QUA_program}
 n_runs = node.parameters.num_runs  # Number of runs
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
+readout_scale = node.parameters.readout_scale
 reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
 operation_name = node.parameters.operation_name
 def iq_blobs_program(qubit):
     with program() as iq_blobs:
         I_g, I_g_st, Q_g, Q_g_st, n, n_st = qua_declaration(num_qubits=1)
         I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(num_qubits=1)
+        # a = declare(fixed, readout_scale)
 
         #for i, qubit in enumerate(qubits):
 
@@ -104,14 +107,14 @@ def iq_blobs_program(qubit):
             # ground iq blobs for all qubits
             save(n, n_st)
             if reset_type == "active":
-                active_reset(qubit, "readout",max_attempts=15,wait_time=500)
+                active_reset(qubit, "readout",max_attempts=100,wait_time=100)
             elif reset_type == "thermal":
                 qubit.wait(4 * qubit.thermalization_time * u.ns)
             else:
                 raise ValueError(f"Unrecognized reset type {reset_type}.")
 
             qubit.align()
-            qubit.resonator.measure(operation_name, qua_vars=(I_g[0], Q_g[0]))
+            qubit.resonator.measure(operation_name, amplitude_scale=readout_scale, qua_vars=(I_g[0], Q_g[0]))
             qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
             # save data
             save(I_g[0], I_g_st[0])
@@ -120,7 +123,7 @@ def iq_blobs_program(qubit):
             qubit.align()
             # excited iq blobs for all qubits
             if reset_type == "active":
-                active_reset(qubit, "readout",max_attempts=15,wait_time=500)
+                active_reset(qubit, "readout",max_attempts=100,wait_time=100)
             elif reset_type == "thermal":
                 qubit.wait(qubit.thermalization_time * u.ns)
             else:
@@ -128,7 +131,7 @@ def iq_blobs_program(qubit):
             qubit.align()
             qubit.xy.play("x180")
             qubit.align()
-            qubit.resonator.measure(operation_name, qua_vars=(I_e[0], Q_e[0]))
+            qubit.resonator.measure(operation_name, amplitude_scale=readout_scale, qua_vars=(I_e[0], Q_e[0]))
             qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
             # save data
             save(I_e[0], I_e_st[0])

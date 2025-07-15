@@ -46,7 +46,7 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ["q3"]
+    qubits: Optional[List[str]] = None
     num_averages: int = 200
     operation: str = "saturation"
     operation_amplitude_factor: Optional[float] = 0.2
@@ -333,7 +333,7 @@ if not node.parameters.simulate:
                         factor_pi = np.pi / (result.sel(qubit=q.name).width.values * Pi_length * 1e-9)
                         limits = instrument_limits(q.xy)
                         if factor_cw * used_amp / operation_amp < limits.max_wf_amplitude:
-                            q.xy.operations["saturation"].amplitude = factor_cw * used_amp / operation_amp
+                            q.xy.operations["saturation"].amplitude = factor_cw * used_amp / operation_amp * 0.5
                         else:
                             q.xy.operations["saturation"].amplitude = limits.max_wf_amplitude
 

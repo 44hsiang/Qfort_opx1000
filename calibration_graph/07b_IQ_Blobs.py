@@ -43,10 +43,11 @@ import xarray as xr
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q0', 'q1', 'q2', 'q3', 'q4']
+    qubits: Optional[List[str]] = ['q1']
     num_runs: int = 5000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    readout_scale: float = 1  # (-2, 2]
     operation_name: str = "readout"  # or "readout_QND"
     simulate: bool = False
     simulation_duration_ns: int = 2500
@@ -92,6 +93,7 @@ num_qubits = len(qubits)
 # %% {QUA_program}
 n_runs = node.parameters.num_runs  # Number of runs
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
+readout_scale = node.parameters.readout_scale
 reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
 operation_name = node.parameters.operation_name
 with program() as iq_blobs:
@@ -113,7 +115,7 @@ with program() as iq_blobs:
                 raise ValueError(f"Unrecognized reset type {reset_type}.")
 
             qubit.align()
-            qubit.resonator.measure(operation_name, qua_vars=(I_g[i], Q_g[i]))
+            qubit.resonator.measure(operation_name, amplitude_scale=readout_scale, qua_vars=(I_g[i], Q_g[i]))
             qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
             # save data
             save(I_g[i], I_g_st[i])
@@ -130,7 +132,7 @@ with program() as iq_blobs:
             qubit.align()
             qubit.xy.play("x180")
             qubit.align()
-            qubit.resonator.measure(operation_name, qua_vars=(I_e[i], Q_e[i]))
+            qubit.resonator.measure(operation_name, amplitude_scale=readout_scale, qua_vars=(I_e[i], Q_e[i]))
             qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
             # save data
             save(I_e[i], I_e_st[i])
@@ -300,6 +302,7 @@ if not node.parameters.simulate:
     ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
     grid.fig.suptitle("g.s. and e.s. discriminators (rotated)")
     plt.tight_layout()
+    plt.show()
     node.results["figure_IQ_blobs"] = grid.fig
 
     grid = QubitGrid(ds, [q.grid_location for q in qubits])

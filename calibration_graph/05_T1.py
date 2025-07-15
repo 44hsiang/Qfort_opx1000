@@ -34,14 +34,14 @@ import numpy as np
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ["q0","q1","q2","q3","q4"]
+    qubits: Optional[List[str]] = None
     num_averages: int = 500
     min_wait_time_in_ns: int = 16
     max_wait_time_in_ns: int = 100000
     wait_time_step_in_ns: int = 600
     flux_point_joint_or_independent_or_arbitrary: Literal["joint", "independent", "arbitrary"] = "joint"
     reset_type: Literal["active", "thermal"] = "active"
-    use_state_discrimination: bool = True
+    use_state_discrimination: bool = False
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
@@ -102,7 +102,7 @@ with program() as t1:
             save(n, n_st)
             with for_(*from_array(t, idle_times)):
                 if node.parameters.reset_type == "active":
-                    active_reset(qubit, "readout")
+                    active_reset(qubit, "readout",max_attempts=100,wait_time=100)
                 else:
                     qubit.resonator.wait(qubit.thermalization_time * u.ns)
                     qubit.align()
