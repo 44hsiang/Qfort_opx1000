@@ -27,14 +27,14 @@ from qiskit.visualization.bloch import Bloch
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q1']
+    qubits: Optional[List[str]] = ['q0']
     num_runs: int = 10000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-    load_data_id: Optional[int] = None
+    load_data_id: Optional[int] = 1629
     multiplexed: bool = False
     desired_state: Optional[List[float]] = [np.pi,0]
 

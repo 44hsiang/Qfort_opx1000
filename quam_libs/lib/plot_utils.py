@@ -230,7 +230,8 @@ class QubitPairGrid:
         min_grid_col = min(grid_col_idxs)
         shape = (max(grid_row_idxs) - min_grid_row + 1, max(grid_col_idxs) - min_grid_col + 1)
 
-        figure, all_axes = plt.subplots(*shape, figsize=(shape[1] * size, shape[0] * size), squeeze=False)
+        figure, all_axes = plt.subplots(*shape, figsize=(shape[1] * size, shape[0] * size), squeeze=False,dpi=600)
+        #figure, all_axes = plt.subplots(*shape, figsize=(25,6), squeeze=False,dpi=600)
 
         if shape == (1, 1):
             # If (1, 1), subplots returns a single axis, which we convert into

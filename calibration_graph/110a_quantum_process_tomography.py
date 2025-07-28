@@ -103,7 +103,6 @@ def QuantumMemory_program(qubit):
                         qubit.align()
                         wait(10)
                         #initial state |0>
-
                         #
                         qubit.xy.play(operation_name)
                         #                        

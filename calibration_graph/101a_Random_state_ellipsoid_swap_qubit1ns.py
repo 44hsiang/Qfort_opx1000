@@ -37,9 +37,9 @@ class Parameters(NodeParameters):
     num_runs: int = 10000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    interaction_time_ns: int = 0
-    simulate: bool = False
-    simulation_duration_ns: int = 1000
+    interaction_time_ns: int = 10
+    simulate: bool = True
+    simulation_duration_ns: int = 10000
     timeout: int = 100
     load_data_id: Optional[int] = 1764
     multiplexed: bool = False

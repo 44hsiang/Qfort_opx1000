@@ -54,14 +54,14 @@ from quam_libs.lib.pulses import FluxPulse
 class Parameters(NodeParameters):
 
     qubit_pairs: Optional[List[str]] = ['q0_q2']
-    num_averages: int = 200
+    num_averages: int = 50
     max_time_in_ns: int = 100
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
-    amp_range : float = 0.4
-    amp_step : float = 0.002
+    amp_range : float = 0.5
+    amp_step : float = 0.01
     load_data_id: Optional[int] = None  
 
 node = QualibrationNode(
@@ -191,8 +191,8 @@ with program() as CPhase_Oscillations:
 
                     # play the flux pulse
                     with if_(t > 0):
-                        #qp.qubit_control.z.play('const', duration=t, amplitude_scale = pulse_amplitudes[qp.name] / qp.qubit_control.z.operations['const'].amplitude * amp)
-                        qp.qubit_control.z.play('const', duration=t, amplitude_scale = amp)
+                        qp.qubit_control.z.play('const', duration=t, amplitude_scale = pulse_amplitudes[qp.name] / qp.qubit_control.z.operations['const'].amplitude * amp)
+                        #qp.qubit_control.z.play('const', duration=t, amplitude_scale = amp)
                     
                     # wait for the flux pulse to end and some extra time
                     for qubit in [qp.qubit_control, qp.qubit_target]:

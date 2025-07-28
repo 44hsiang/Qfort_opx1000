@@ -44,19 +44,19 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ['q1']
     num_averages: int = 100
     frequency_span_in_mhz: float = 15
     frequency_step_in_mhz: float = 0.1
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-    max_power_dbm: int = -30
+    max_power_dbm: int = -20
     min_power_dbm: int = -50
     num_power_points: int = 100
     max_amp: float = 0.1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    ro_line_attenuation_dB: float = 0
+    ro_line_attenuation_dB: float = 72
     derivative_crossing_threshold_in_hz_per_dbm: int = int(-50e3)
     derivative_smoothing_window_num_points: int = 30
     moving_average_filter_window_num_points: int = 30
@@ -82,6 +82,7 @@ prev_amps = [rr.operations["readout"].amplitude for rr in resonators]
 num_qubits = len(qubits)
 
 # Update the readout power to match the desired range, this change will be reverted at the end of the node.
+'''
 tracked_resonators = []
 for i, qubit in enumerate(qubits):
     with tracked_updates(qubit.resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
@@ -90,7 +91,7 @@ for i, qubit in enumerate(qubits):
             max_amplitude=node.parameters.max_amp
         )
         tracked_resonators.append(resonator)
-
+'''
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP

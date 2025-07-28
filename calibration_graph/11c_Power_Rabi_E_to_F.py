@@ -41,8 +41,8 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q2']
-    num_averages: int = 1000
+    qubits: Optional[List[str]] = None
+    num_averages: int = 2000
     operation: str = "EF_x180"
     min_amp_factor: float = 0.0
     max_amp_factor: float = 2.0
@@ -208,7 +208,7 @@ if not node.parameters.simulate:
         factor = float(1.0 * (np.pi - phi_fit) / (2 * np.pi * f_fit))
         # Calibrated |e> -> |f> pi pulse absolute amplitude
         new_pi_amp = q.xy.operations[operation].amplitude * factor
-        if np.abs(new_pi_amp) < 0.3:  # TODO: 1 for OPX1000 MW
+        if np.abs(new_pi_amp) < 0.5:  # TODO: 1 for OPX1000 MW
             print(
                 f"amplitude for E-F Pi pulse is modified by a factor of {factor:.2f} w.r.t the original pi pulse amplitude"
             )
@@ -217,8 +217,8 @@ if not node.parameters.simulate:
             )  # TODO: 1 for OPX1000 MW
             fit_results[q.name]["Pi_amplitude"] = new_pi_amp
         else:
-            print(f"Fitted amplitude too high or negative, new amplitude is 300 mV \n")
-            fit_results[q.name]["Pi_amplitude"] = 0.3  # TODO: 1 for OPX1000 MW
+            print(f"Fitted amplitude too high or negative, new amplitude is 500 mV \n")
+            fit_results[q.name]["Pi_amplitude"] = 0.5  # TODO: 1 for OPX1000 MW
     node.results["fit_results"] = fit_results
 
 # %% {Plotting}

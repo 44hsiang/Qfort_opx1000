@@ -1,4 +1,11 @@
 {
+    "network": {
+        "host": "192.168.50.136",
+        "port": null,
+        "cluster_name": "Cluster_1",
+        "octave_ips": [],
+        "octave_ports": []
+    },
     "wiring": {
         "qubits": {
             "q0": {
@@ -89,12 +96,5 @@
             }
         },
         "twpa": "#/ports/mw_outputs/con1/1/8"
-    },
-    "network": {
-        "host": "192.168.50.136",
-        "port": null,
-        "cluster_name": "Cluster_1",
-        "octave_ips": [],
-        "octave_ports": []
     }
 }

@@ -66,7 +66,7 @@ for q in qubits:
     with tracked_updates(resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
         resonator.time_of_flight = node.parameters.time_of_flight_in_ns
         resonator.operations["readout"].length = node.parameters.readout_length_in_ns
-        resonator.set_output_power(node.parameters.readout_amplitude_in_dBm, operation="readout")
+        #resonator.set_output_power(node.parameters.readout_amplitude_in_dBm, operation="readout")
         if node.parameters.intermediate_frequency_in_mhz is not None:
             resonator.intermediate_frequency = node.parameters.intermediate_frequency_in_mhz * u.MHz
         tracked_resonators.append(resonator)

@@ -111,10 +111,14 @@ def negativity_(rho):
 
 def diagnose_choi_states(choi_list,index, tol_pos=1e-10, tol_tp=1e-3):
     rows = []
+    def trace_norm(rho,sigama):
+        dif = rho - sigama
+        evals = eigvalsh(dif)
+        return 0.5 * np.sum(np.abs(evals))
     for k, j in enumerate(choi_list):
         lam_min   = eigvalsh(j).min()
         trace     = j.trace().real
-        tp_dev    = norm(qml.math.partial_trace(j,indices=[1]) - 0.5*np.eye(2), 'fro')
+        tp_dev    = trace_norm(qml.math.partial_trace(j,indices=[1]),0.5*np.eye(2))
         is_Hermitian = np.allclose(j, j.conj().T)
         rows.append({
             "index":   index[k],
@@ -276,3 +280,148 @@ def project_to_cptp_1q(dm_list,dims=(2, 2),method="cvxpy"):
         corrected_dm = np.array(corrected_dm).reshape(-1, dims[0], dims[1])
         corrected_bloch = np.array([density_matrix_to_bloch_vector(dm) for dm in corrected_dm])
         return corrected_dm, corrected_bloch
+
+import imageio.v3 as iio  # imageio 第 3 版 API；也可改用 imageio.mimsave
+from pathlib import Path
+
+def make_gif(image_paths, output_path, duration=0.5, loop=0):
+
+    """
+    將 image_paths 裡的圖片依序合成 GIF。
+
+    Parameters
+    ----------
+    image_paths : list[str | Path]
+        圖片檔案路徑（完整路徑或相對路徑都可），順序就是播放順序。
+    output_path : str | Path
+        產出的 GIF 檔案路徑，副檔名請給 .gif。
+    duration : float | list[float], optional
+        每一張圖片顯示的秒數（或一個與 image_paths 等長的 list，逐張指定），預設 0.5 s。
+    loop : int, optional
+        動畫迴圈次數；0 代表無限迴圈，1 代表播完一次就停，依此類推，預設 0。
+    """
+    # 轉成 Path 物件方便檢查
+    image_paths = [Path(p) for p in image_paths]
+    assert all(p.exists() for p in image_paths), "有找不到的圖片路徑！"
+
+    # 讀取所有 frame（支援各種格式：png/jpg/pdf…）
+    frames = [iio.imread(p) for p in image_paths]
+
+    # 寫出 gif
+    iio.imwrite(
+        output_path,
+        frames,
+        format="GIF",
+        duration=duration,
+        loop=loop,
+    )
+
+    print(f"✅ GIF 已生成：{output_path}")
+
+def ellipsoid_to_quadric(center, axes, R):
+
+    c = np.asarray(center, dtype=float).reshape(3)
+    a, b, c_len = np.asarray(axes, dtype=float).reshape(3)
+    R = np.asarray(R, dtype=float).reshape(3, 3)
+
+    # 1. 形狀矩陣：Q = R · diag(1/a², 1/b², 1/c²) · Rᵀ
+    Q_local = np.diag([1/a**2, 1/b**2, 1/c_len**2])
+    Q = R @ Q_local @ R.T            # 對稱 3×3
+
+    # 2. 線性項向量：ℓ = −2 Q c
+    linear = -2 * Q @ c              # (G, H, I)
+
+    # 3. 常數項：J = cᵀ Q c − 1
+    J = float(c @ Q @ c - 1.0)
+
+    # 4. 從 Q 擷取二次項係數
+    A, B, C = Q[0, 0], Q[1, 1], Q[2, 2]
+    D = 2 * Q[0, 1]
+    E = 2 * Q[0, 2]
+    F = 2 * Q[1, 2]
+    G, H, I = linear
+
+    return np.array([A, B, C, D, E, F, G, H, I, J])
+
+
+def ellipsoid_equation(r,param):
+    x, y, z = r
+    return (param[0] * x**2 + param[1] * y**2 + param[2] * z**2 +
+            param[3] * x * y + param[4] * x * z + param[5] * y * z +
+            param[6] * x + param[7] * y + param[8] * z + param[9])
+
+def generate_uniform_sphere_angles(n_points):
+
+    indices = np.arange(0, n_points)
+    golden_angle = np.pi * (3 - np.sqrt(5))  
+
+    z = 1 - 2 * (indices + 0.5) / n_points     
+    theta = np.arccos(z)                      
+    phi = (indices * golden_angle) % (2 * np.pi)  
+
+    theta_list = theta.tolist()
+    phi_list = phi.tolist()
+
+    return theta_list, phi_list
+
+import io
+from typing import List, Union
+
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
+from PIL import Image
+
+
+def figlist_to_gif(
+    figure_list: List[Union[Figure, Axes]],
+    outfile: str = "anim.gif",
+    fps: int = 3,
+    loop: int = 0,
+):
+
+    frames = []
+    for obj in figure_list:
+        fig: Figure = obj.figure if isinstance(obj, Axes) else obj  
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", dpi=fig.dpi)  
+        buf.seek(0)
+        frames.append(Image.open(buf).convert("RGBA"))
+
+    if not frames:
+        raise ValueError("figure_list can't be empty.")
+
+    duration = int(round(1000 / fps))  
+    frames[0].save(
+        outfile,
+        save_all=True,
+        append_images=frames[1:],
+        duration=duration,
+        loop=loop,
+    )
+    print(
+        f"output {outfile} fps≈{round(1000/duration, 2)}，"
+        f"loop={'infinite' if loop == 0 else loop}）"
+    )
+
+def dm_checker_dict(data_dict,name = 'data_dm', tolerance=1e-8, print_details=False):
+    bad_dict = {}
+    for key in data_dict.keys():
+        count = 0
+        index_list = []
+        for i in range(len(data_dict[key][name])):
+            data_check = dm_checker(data_dict[key][name][i],tol = tolerance,print_reason=print_details)
+            if data_check:
+                pass
+            else:
+                print(f"Density matrix[{i}] is not valid for {key}") if print_details else None
+                count += 1
+                index_list.append(i)
+        if print_details:
+            if count > 0 :
+                print(f"Total {count} valid point in Density matrix for {key}") 
+            if count == 0:
+                print(f"No errors in {name} and for {key}") 
+            print('-'*75)
+        bad_dict[key] = index_list
+    return bad_dict
+    

@@ -45,7 +45,7 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_runs: int = 5000
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     operation_name: str = "readout"  # or "readout_QND"
     simulate: bool = False
@@ -55,7 +55,7 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
 
 
-node = QualibrationNode(name="07b_IQ_Blobs", parameters=Parameters())
+node = QualibrationNode(name="07b_IQ_Blobs_test", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -65,12 +65,13 @@ u = unit(coerce_to_integer=True)
 machine = QuAM.load()
 
 #%%
-'''
+
 # delete the thread when using active reset
+'''
 if node.parameters.reset_type_thermal_or_active == "active":
     for i in machine.active_qubit_names:
         del machine.qubits[i].xy.core
-        del machine.qubits[i].resonator.thread
+        del machine.qubits[i].resonator.core
 '''
 #%%
 # Generate the OPX and Octave configurations
@@ -118,8 +119,9 @@ with program() as iq_blobs:
             # save data
             save(I_g[i], I_g_st[i])
             save(Q_g[i], Q_g_st[i])
-
+            
             qubit.align()
+            
             # excited iq blobs for all qubits
             if reset_type == "active":
                 active_reset(qubit, "readout",max_attempts=15,wait_time=4)
@@ -127,6 +129,7 @@ with program() as iq_blobs:
                 qubit.wait(qubit.thermalization_time * u.ns)
             else:
                 raise ValueError(f"Unrecognized reset type {reset_type}.")
+            
             qubit.align()
             qubit.xy.play("x180")
             qubit.align()
@@ -139,33 +142,29 @@ with program() as iq_blobs:
         # Measure sequentially
         if not node.parameters.multiplexed:
             align()
-    
+
+            
     with stream_processing():
         n_st.save("n")
+        
         for i in range(num_qubits):
             I_g_st[i].save_all(f"I_g{i + 1}")
             Q_g_st[i].save_all(f"Q_g{i + 1}")
             I_e_st[i].save_all(f"I_e{i + 1}")
             Q_e_st[i].save_all(f"Q_e{i + 1}")
-
+        
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, iq_blobs, simulation_config)
-    # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()
-    fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
-    for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
-        samples[con].plot()
-        plt.title(con)
-    plt.tight_layout()
-    # Save the figure
-    node.results = {"figure": plt.gcf()}
-    node.machine = machine
-    node.save()
+    waveform_report = job.get_simulated_waveform_report()
+    waveform_report.create_plot(samples,plot=True)
+    #node.results = {"figure": plt.gcf()}
+    #node.machine = machine
+    #node.save()
     
 elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
@@ -347,8 +346,8 @@ if not node.parameters.simulate:
             # revert the thread if using active reset
             if node.parameters.reset_type_thermal_or_active == "active":
                 for i,j in zip(machine.active_qubit_names,"abcde"):
-                    machine.qubits[i].xy.core = j
-                    machine.qubits[i].resonator.core = j
+                    machine.qubits[i].xy.thread = j
+                    machine.qubits[i].resonator.thread = j
 
         # %% {Save_results}
         node.outcomes = {q.name: "successful" for q in qubits}

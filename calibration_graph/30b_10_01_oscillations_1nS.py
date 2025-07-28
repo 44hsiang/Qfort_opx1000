@@ -65,8 +65,8 @@ class Parameters(NodeParameters):
     amp_step_coarse : float = 0.005
     amp_range_fine : float = 0.15
     amp_step_fine : float = 0.002
-    load_data_id: Optional[int] = None  
-
+    #load_data_id: Optional[int] = 1620  
+    load_data_id: Optional[int] = None
 node = QualibrationNode(
     name="30b_01_10_oscillations_1nS", parameters=Parameters()
 )
@@ -398,7 +398,8 @@ if not node.parameters.simulate:
         ax.plot([lengths[qubit_pair['qubit']]-zero_paddings[qubit_pair['qubit']]],[1e-6*detunings[qubit_pair['qubit']]],marker= '.', color = 'red')
         ax.axhline(y=1e-6*detunings[qubit_pair['qubit']], color='k', linestyle='--', lw = 0.5)
         ax.axvline(x=lengths[qubit_pair['qubit']]-zero_paddings[qubit_pair['qubit']], color='k', linestyle='--', lw = 0.5)
-        ax.set_title(qubit_pair["qubit"])
+        #ax.set_title(qubit_pair["qubit"])
+        ax.set_title('iSWAP')
         ax.set_ylabel('Detuning [MHz]')
         ax.set_xlabel('time [nS]')
         f_eff = np.sqrt(Js[qubit_pair['qubit']]**2 + 0.25*(ds.detuning.sel(qubit=qubit_pair['qubit'])-detunings[qubit_pair['qubit']])**2)

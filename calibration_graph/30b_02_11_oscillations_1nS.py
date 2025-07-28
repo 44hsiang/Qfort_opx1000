@@ -54,18 +54,18 @@ from quam_libs.lib.pulses import FluxPulse
 class Parameters(NodeParameters):
 
     qubit_pairs: Optional[List[str]] = None
-    num_averages: int = 100
+    num_averages: int =100
     max_time_in_ns: int = 100
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
-    method: Literal['coarse', 'fine'] = "fine"
-    amp_range_coarse : float = 0.2
-    amp_step_coarse : float = 0.004
-    amp_range_fine : float = 0.15
-    amp_step_fine : float = 0.002
-    load_data_id: Optional[int] = 1582  
+    method: Literal['coarse', 'fine'] = " fine"
+    amp_range_coarse : float = 0.5
+    amp_step_coarse : float = 0.005 
+    amp_range_fine : float = 0.3
+    amp_step_fine : float = 0.01
+    load_data_id: Optional[int] = None   
 
 node = QualibrationNode(
     name="30b_02_11_oscillations_1nS", parameters=Parameters()
@@ -159,7 +159,7 @@ if node.parameters.method == "coarse":
         detuning = qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency - qp.qubit_target.anharmonicity
         pulse_amplitudes[qp.name] = float(np.sqrt(-detuning/qp.qubit_control.freq_vs_flux_01_quad_term))
         if qp.name[-2:] == 'q2':
-            pulse_amplitudes[qp.name] *= 2
+             pulse_amplitudes[qp.name] *= 2
 else:
     for qp in qubit_pairs:
         pulse_amplitudes[qp.name] = qp.gates["Cz"].flux_pulse_control.amplitude

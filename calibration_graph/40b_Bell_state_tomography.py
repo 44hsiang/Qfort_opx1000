@@ -64,11 +64,11 @@ class Parameters(NodeParameters):
     reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
-    load_data_id: Optional[int] = None
+    load_data_id: Optional[int] = 811
 
 
 node = QualibrationNode(
-    name="40b_Bell_state_tomography", parameters=Parameters()
+    name="40b_Bell_state_tomography_", parameters=Parameters()
 )
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
 
@@ -385,7 +385,7 @@ results_xr = xr.concat(results, dim=xr.DataArray(states, name="state"))
 results_xr = results_xr.rename({"dim_0": "state"})
 results_xr = results_xr.stack(
         tomo_axis=['tomo_axis_target', 'tomo_axis_control'])
-
+node.results['results']={}
 corrected_results = []
 for qp in qubit_pairs:
     corrected_results_qp = [] 
@@ -397,11 +397,14 @@ for qp in qubit_pairs:
             results = np.linalg.inv(qp.confusion) @ results.data
             # results = np.linalg.inv(np.diag((1,1,1,1))) @ results.data
 
-            results = results * (results > 0)
-            results = results / results.sum()
+            # results = results * (results > 0)
+            # results = results / results.sum()
             corrected_results_control.append(results)
         corrected_results_qp.append(corrected_results_control)
     corrected_results.append(corrected_results_qp)
+    node.results['results'][qp.name] = {
+        'confusion matrix': np.array(qp.confusion)
+    }
 
     # %%
 
@@ -430,7 +433,8 @@ for qp in qubit_pairs:
         #paulis_data[qp.name] = get_pauli_data(results_xr.sel(qubit = qp.name))
 
         rhos[qp.name] = get_density_matrix(paulis_data[qp.name])
-        
+        node.results['results'][qp.name]['MLE'] = rhos[qp.name]
+
     # %%
     from scipy.linalg import sqrtm
     ideal_dat = np.array([[1,0,0,1],[0,0,0,0],[0,0,0,0],[1,0,0,1]])/2

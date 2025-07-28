@@ -1,3 +1,4 @@
+
 import numpy as np
 import xarray as xr
 import json
@@ -10,134 +11,8 @@ from quam_libs.fit_ellipsoid import ls_ellipsoid, polyToParams3D
 import cvxpy as cp
 from itertools import permutations
 
-## Helper functions
-def MLE(original_P,confusion_matrix):
-    """
-    Maximum Likelihood Estimation of the true probabilities
-    :param original_P: Original probabilities
-    :param confusion_matrix: Confusion matrix
-    :return: Estimated true probabilities
-    """
-    N_obs = original_P
-    M = confusion_matrix
-    def neg_log_likelihood(p_optimal):
-        q_predict = M @ p_optimal
-        return -np.sum(N_obs * np.log(q_predict + 1e-10))  # Avoid log(0)
 
-    # Constraints: p0 + p1 = 1, p0 >= 0, p1 >= 0
-    constraints = ({'type': 'eq', 'fun': lambda p: np.sum(p) - 1})
-    bounds = [(0, 1), (0, 1)]
-
-    # Initial guess (e.g., [0.5, 0.5])
-    result = minimize(neg_log_likelihood, x0=[0.5, 0.5], 
-                    bounds=bounds, constraints=constraints)
-
-    p_optimal_estimated = result.x
-    if not result.success:
-        raise ValueError("MLE Optimization failed: " + result.message)
-    #print(f"Estimated true probabilities: {p_optimal_estimated}")
-    return p_optimal_estimated
-
-def plot_results(title, axes, volume, fitting_error, fidelity, T2, T1, noise_voltage):
-    fig, axs = plt.subplots(3, 2, figsize=(8, 6))
-
-    plt.suptitle(title)
-    axs_axes =axs[0,0]
-    axs_volume =axs[1,0]
-    axs_error =axs[0,1]
-    axs_fidelity =axs[1,1]
-    axs_T2 =axs[2,0]
-    axs_T1 =axs[2,1]
-
-    axs_axes.plot(noise_voltage,axes[:,0],'k',label='x')
-    axs_axes.plot(noise_voltage,axes[:,1],'b',label='y')
-    axs_axes.plot(noise_voltage,axes[:,2],'r',label='z')
-    axs_axes.set_ylabel('Axes')
-    axs_axes.legend()
-
-    axs_volume.plot(noise_voltage,volume,'k')
-    axs_volume.plot(noise_voltage,volume,'.r')
-    axs_volume.set_ylabel('Volume')
-
-    axs_error.errorbar(noise_voltage, fitting_error[:,0], yerr=fitting_error[:,1], fmt='o', capsize=5, label="Mean with Std Dev")
-    axs_error.set_ylabel('fitting error')
-
-    axs_fidelity.errorbar(noise_voltage, fidelity[:,0], yerr=fidelity[:,1], fmt='o', capsize=5, label="Mean with Std Dev")
-    axs_fidelity.set_ylabel('Fidelity')
-
-    axs_T2.plot(noise_voltage,T2,'k')
-    axs_T2.plot(noise_voltage,T2,'.r')
-    axs_T2.set_xlabel('Noise amp(mV)')
-    axs_T2.set_ylabel('T2(us)')
-
-    axs_T1.plot(noise_voltage,T1,'k')
-    axs_T1.plot(noise_voltage,T1,'.r')
-    axs_T1.set_xlabel('Noise amp(mV)')
-    axs_T1.set_ylabel('T1(us)')
-    plt.tight_layout()
-    plt.show()
-    return fig
-
-def plot_avfe(title,xx,axes,volume,fidelity,fitting_error,negativity,y_limit=False):
-    """
-    Plot the average fidelity, fitting error and volume of the ellipsoid
-    :param title: title of the plot, string
-    :param xx: x axis data, dict{'x_title':np.array(xx)}
-    :param data_x: x axis data, np.array
-    :param data_y: y axis data, np.array
-    :param data_z: z axis data, np.array
-    :param volme: volume of the ellipsoid, np.array
-    :param fidelity: fidelity of the ellipsoid, np.array
-    :param fitting_error: fitting error of the ellipsoid, np.array
-    :return: plot
-    """
-    x_title = list(xx.keys())[0]
-    x_values = list(xx.values())[0]
-    fig = plt.figure(figsize=(4, 8))
-    ax_name = ['axes', 'volume', 'fidelity', 'fitting error', 'negativity']
-    ax_axes = fig.add_subplot(len(ax_name), 1, 1)
-    ax_volume = fig.add_subplot(len(ax_name), 1, 2)
-    ax_fidelity = fig.add_subplot(len(ax_name), 1, 3)
-    ax_fitting_error = fig.add_subplot(len(ax_name), 1, 4)
-    ax_negativity = fig.add_subplot(len(ax_name), 1, 5)
-
-    ax_axes.set_title(title)
-    ax_axes.plot(x_values,axes[:,0],'k',label='x')
-    ax_axes.plot(x_values,axes[:,1],'r',label='y')
-    ax_axes.plot(x_values,axes[:,2],'b',label='z')
-    if y_limit:
-        ax_axes.set_ylim(0,1)
-    ax_axes.set_ylabel('Axes')
-    ax_axes.legend(loc='lower right')
-
-    ax_volume.plot(x_values,volume,'k')
-    ax_volume.plot(x_values,volume,'.r')
-    if y_limit:
-        ax_volume.set_ylim(0,4*np.pi/3)
-    ax_volume.set_ylabel('Volume')
-
-    ax_fidelity.errorbar(x_values,fidelity[:,0],yerr=fidelity[:,1],fmt='o')
-    ax_fidelity.set_ylabel('Fidelity')
-
-    ax_fitting_error.errorbar(x_values,fitting_error[:,0],yerr=fitting_error[:,1],fmt='o')
-    ax_fitting_error.set_ylabel('Fitting error')
-    #ax_fitting_error.set_xlabel(x_title)
-
-    #ax_negativity.errorbar(x_values,negativity[:,0],yerr=negativity[:,1],fmt='o')
-    indices = np.where((negativity > -0.01) & (negativity < 0.5))[0]
-
-    ax_negativity.plot(x_values[indices],negativity[indices],'k')
-    ax_negativity.plot(x_values[indices],negativity[indices],'.r')
-
-    ax_negativity.set_ylabel('Negativity')
-    if y_limit:
-        ax_negativity.set_ylim(0,0.5)
-    ax_negativity.set_xlabel(x_title)
-
-    plt.tight_layout()
-    return fig
-
-class QM_analyze:
+class swap_analyze:
     """
     Class for analyzing quantum measurement data.
     
@@ -175,7 +50,7 @@ class QM_analyze:
         self.fidelity = np.array([np.abs(np.trace(self.exp_dm[i] @ self.ideal_dm[i])**2) for i in range(len(self.x))])
         self.trace_distance = np.array([0.5 * np.sum(np.abs(self.exp_dm[i] - self.ideal_dm[i])) for i in range(len(self.x))])        
 
-        self.ellipsoid_center, self.ellipsoid_axes, self.ellipsoid_R,self.volume, self.ellipsoid_param,self.ellipsoid_perm = self.ellipsoid_fit()
+        self.ellipsoid_center, self.ellipsoid_axes, self.ellipsoid_R,self.volume, self.ellipsoid_param = self.ellipsoid_fit()
         self.shortest_distance = self.shortest_distance()
         self.fitting_error = self.fit_error()
         
@@ -185,16 +60,6 @@ class QM_analyze:
         self.negativity = self.negativity()
 
     def ellipsoid_fit(self):
-
-        def assign_axes(R):
-            """R : 3×3   每一欄是特徵向量
-            回傳 perm 使 R[:, perm[i]] 與 (x,y,z) 最對齊"""
-            # |dot(e_i, r_j)|, e_i = (1,0,0)…(0,0,1)
-            scores = np.abs(np.eye(3) @ R)        # 3×3
-            # 找出讓 Σ scores[i, perm[i]] 最大的排列
-            best = max(permutations(range(3)),
-                    key=lambda p: sum(scores[i, p[i]] for i in range(3)))
-            return list(best)
 
         def best_axis_permutation(R):
             if R.shape != (3, 3):
@@ -228,7 +93,6 @@ class QM_analyze:
         x = self.measurement_data[:,0]
         y = self.measurement_data[:,1]
         z = self.measurement_data[:,2]
-        
         if self.do_convex_hull == True:
             # Use the convex hull to fit the ellipsoid
             hull = ConvexHull(self.measurement_data)
@@ -239,13 +103,11 @@ class QM_analyze:
         param = ls_ellipsoid(x,y,z)
         param = param / np.linalg.norm(param) 
         center,axes,R = polyToParams3D(param,False)
-        perm = assign_axes(R)
-
         #perm = list(best_axis_permutation(R))
         #center,axes,R = center[perm], axes[perm], R[perm]
         #R,center,axes = reorder_ellipsoid_simple(R, center, axes)
         volume = (4/3)*np.pi*axes[0]*axes[1]*axes[2]
-        return center,axes,R,volume,param,perm
+        return center,axes,R,volume,param
     
     def shortest_distance(self):
         '''
@@ -396,7 +258,6 @@ class QM_analyze:
                 "axes": self.ellipsoid_axes.tolist(),
                 "R": self.ellipsoid_R.tolist(),
                 "volume": self.volume,
-                "ellipsoid_perm": self.ellipsoid_perm,
                 "convex_hull_volume": self.convex_hull.volume,
                 "convex_hull_vertices": self.convex_hull.vertices.tolist(),
                 "fitting_param": self.ellipsoid_param.tolist(),
@@ -471,9 +332,3 @@ class QM_analyze:
     def negativity(self):
         eigvals = eigvalsh(self.rho_PT)
         return -eigvals[eigvals < 0].sum() 
-
-
-    def quatnum_memory():
-        """
-        Calculate the quantum memory of the ellipsoid.
-        """

@@ -1,8 +1,20 @@
 '''
 take it form here http://www.juddzone.com/ALGORITHMS/least_squares_3D_ellipsoid.html
 '''
-from numpy.linalg import eig, inv
+from numpy.linalg import eig, inv,eigh
 import numpy as np
+from itertools import permutations
+
+def assign_axes(R):
+    """R : 3×3   每一欄是特徵向量
+       回傳 perm 使 R[:, perm[i]] 與 (x,y,z) 最對齊"""
+    # |dot(e_i, r_j)|, e_i = (1,0,0)…(0,0,1)
+    scores = np.abs(np.eye(3) @ R)        # 3×3
+    # 找出讓 Σ scores[i, perm[i]] 最大的排列
+    best = max(permutations(range(3)),
+               key=lambda p: sum(scores[i, p[i]] for i in range(3)))
+    return list(best)
+
 #least squares fit to a 3D-ellipsoid
 #  Ax^2 + By^2 + Cz^2 +  Dxy +  Exz +  Fyz +  Gx +  Hy +  Iz  = 1
 #
@@ -54,7 +66,10 @@ def polyToParams3D(vec,printMe):
 
    #Algebraic form: X.T * Amat * X --> polynomial form
 
-   if printMe: 
+
+   # xT*Q*x +pT*x + J = 0 ellipsoid equation Q = Amat[0:3,0:3], P = Amat[3,0:3], J = Amat[3,3]
+ 
+   if printMe:
     print('\npolynomial\n',vec)
 
    Amat=np.array(
@@ -68,8 +83,8 @@ def polyToParams3D(vec,printMe):
    if printMe: 
     print('\nAlgebraic form of polynomial\n',Amat)
 
-   #See B.Bartoni, Preprint SMU-HEP-10-14 Multi-dimensional Ellipsoidal Fitting
-   # equation 20 for the following method for finding the center
+   # for solving center, the first order terms should be 0. 
+   # Hence we get, center = -Q^-1 * P, 
    A3=Amat[0:3,0:3]
    A3inv=inv(A3)
    ofs=vec[6:9]/2.0
@@ -85,7 +100,7 @@ def polyToParams3D(vec,printMe):
     print('\nAlgebraic form translated to center\n',R,'\n')
 
    R3=R[0:3,0:3]
-   R3test=R3/R3[0,0]
+   #R3test=R3/R3[0,0]
    #print('normed \n',R3test)
    s1=-R[3, 3]
    R3S=R3/s1
@@ -97,8 +112,9 @@ def polyToParams3D(vec,printMe):
     print('\nAxes are\n',axes  ,'\n')
 
    inve=inv(ec) #inverse is actually the transpose here
-   if printMe:
-    print('\nRotation matrix\n',inve)
+   #if np.linalg.det(inve)<0:
+   #     inve[0,:] *= -1 # flip the last column to make it a right handed system
+
    return (center,axes,inve)
 
 def printAns3D(center,axes,R,xin,yin,zin):

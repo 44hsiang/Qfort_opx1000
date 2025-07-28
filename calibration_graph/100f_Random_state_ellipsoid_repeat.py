@@ -39,7 +39,7 @@ class Parameters(NodeParameters):
     simulate: bool = False
     simulation_duration_ns: int = 10000
     timeout: int = 100
-    load_data_id: Optional[int] = Nonemea
+    load_data_id: Optional[int] = None
     multiplexed: bool = False
     number_of_points: int = 1
     repeats: int = 200
