@@ -13,8 +13,8 @@ class Parameters(GraphParameters):
 
 qubits = ["q0"]
 multiplexed = False
-reset_type_thermal_or_active = "thermal"
-
+t2_max = 30000
+t2_detuning = 0.4
 
 g = QualibrationGraph(
     name="retuning_graph_1q",
@@ -23,9 +23,14 @@ g = QualibrationGraph(
         "close_other_qms": library.nodes["00_Close_other_QMs"].copy(
             name="close_other_qms",
         ),
+        "qubit_freq": library.nodes["03a_Qubit_Spectroscopy"].copy(
+            name="qubit_freq",
+            num_averages=400,
+            operation_amplitude_factor=0.01
+        ),
         "rabi_1": library.nodes["04_Power_Rabi"].copy(
             name="rabi_1",
-            num_averages = 500,
+            num_averages=500,
             operation_x180_or_any_90 = "x180",
             min_amp_factor= 0.0,
             max_amp_factor = 1.99,
@@ -45,7 +50,7 @@ g = QualibrationGraph(
             qubits = qubits,
             flux_point_joint_or_independent="joint",
             name="IQ_blob_thermal",
-            reset_type_thermal_or_active=reset_type_thermal_or_active,
+            reset_type_thermal_or_active="thermal",
         ),
         "IQ_blob_active": library.nodes["07b_IQ_Blobs1"].copy(
             qubits = qubits,
@@ -62,9 +67,9 @@ g = QualibrationGraph(
             qubits = qubits,
             flux_point_joint_or_independent="joint",
             name="ramsey_long1",
-            frequency_detuning_in_mhz=0.5,
+            frequency_detuning_in_mhz=t2_detuning,
             min_wait_time_in_ns=16,
-            max_wait_time_in_ns=15000,
+            max_wait_time_in_ns=t2_max,
             num_time_points=500,
         ),
         "ramsey_long2": library.nodes["06_Ramsey"].copy(
@@ -72,9 +77,9 @@ g = QualibrationGraph(
             flux_point_joint_or_independent="joint",
             multiplexed=multiplexed,
             name="ramsey_long2",
-            frequency_detuning_in_mhz=0.5,
+            frequency_detuning_in_mhz=t2_detuning,
             min_wait_time_in_ns=16,
-            max_wait_time_in_ns=15000,
+            max_wait_time_in_ns=t2_max,
             num_time_points=500,
         ),
         "DRAG": library.nodes["09c_DRAG_Calibration_180_90"].copy(
@@ -92,7 +97,8 @@ g = QualibrationGraph(
 
     },
     connectivity=[
-        ("close_other_qms",'rabi_1'),
+        ("close_other_qms",'qubit_freq'),
+        ('qubit_freq','rabi_1'),
         ('rabi_1',"rabi_50"),
         ("rabi_50","IQ_blob_thermal"),
         ("IQ_blob_thermal", "IQ_blob_active"),
