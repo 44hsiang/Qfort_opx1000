@@ -18,6 +18,9 @@ from qualang_tools.units import unit
 from qm import SimulationConfig
 from qm.qua import *
 from typing import Literal, Optional, List
+from quam_libs.quantum_memory.NoiseAnalyze import *
+from quam_libs.quantum_memory.marcos import *
+from quam_libs.quantum_memory.EllipsoidTool import *
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,14 +35,14 @@ from qiskit.visualization.bloch import Bloch
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q1']
+    qubits: Optional[List[str]] = ['q0'] # only support one qubit
     num_runs: int = 10000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     simulation_duration_ns: int = 10000
     timeout: int = 100
-    load_data_id: Optional[int] = None
+    load_data_id: Optional[int] = 4921
     multiplexed: bool = False
     number_of_points: int = 1
     repeats: int = 200
@@ -250,166 +253,85 @@ if not node.parameters.simulate:
     else:
         pass
 
-    # %% mitigation
+    # %% useful functions
+
     # %% {Data_analysis}
     node.results = {"ds": ds, "figs": {}, "results": {}}
-    node.results["ds"] = ds
-    filter_data = False
-    analyze_results = {}
-    data_results = {}
-    for q in qubits:
-        # filter bad data if fitting_again = True
-        theta_diff = (ds.theta.values-ds.sel(qubit=q.name).Bloch_theta.values)
-        phi_diff = angle_error_min(ds.phi.values,ds.sel(qubit=q.name).Bloch_phi.values)
-        phi_diff_sort_index = np.argsort(np.abs(phi_diff))
-        filter_index_sd = np.array([])
-        # TODO : make short distance index iterable
-        for j in range(2): # 1 => only phase 2 => phase and short distance
-            if filter_data:
-                delete_index = np.union1d(filter_index_sd,phi_diff_sort_index[150:])
-                filter_index = np.delete(ds.n_points,delete_index.astype(int))
-            else:
-                filter_index = np.arange(n_points*repeats)
+    
+    data_xyz = np.array([[ds.Bloch_vector_x.values[0][i], ds.Bloch_vector_y.values[0][i], ds.Bloch_vector_z.values[0][i]] for i in range(len(ds.n_points.values))])
+    data_angle = np.array([[ds.theta.values[i], ds.phi.values[i]] for i in range(len(ds.n_points.values))])
+    data_dm = np.array([bloch_vector_to_density_matrix(data_xyz[i]) for i in range(len(data_xyz))])
+    noise_analyzer = NoiseAnalyze(data_xyz,data_angle)
+    corrected_dm = noise_analyzer.corrected_dm
+    corrected_bloch = noise_analyzer.corrected_bloch
+    # first fit ellipsoid
+    center, axes, R, volume, param = noise_analyzer.ellipsoid_fit()
+    # compare the fitted ellipsoid with quadric form and find the best fit.
+    #axes, R = find_best_fit(center, axes, R, param)
 
-            theta_stats =[theta_diff[filter_index].mean(),theta_diff[filter_index].std()]
-            phi_stats = [phi_diff[filter_index].mean(),phi_diff[filter_index].std()]
-            # fit ellipsoid
-            x = ds.sel(qubit=q.name).Bloch_vector_x.values[filter_index]
-            y = ds.sel(qubit=q.name).Bloch_vector_y.values[filter_index]
-            z = ds.sel(qubit=q.name).Bloch_vector_z.values[filter_index]
-            theta_data = ds.theta.values[filter_index]
-            phi_data = ds.phi.values[filter_index]    
-            param = ls_ellipsoid(x,y,z)
-            center,axes,R = polyToParams3D(param,False)
+    qm_analyze = QuantumMemory(axes,center,R)
+    choi_state = qm_analyze.choi_state()
 
-            # elliptcal parameters define in the constraint function
-            shortest_distance = np.array([])
-            for i in range(n_points*len(filter_index)):
-                x0, y0, z0 = x[i], y[i], z[i]
-                data_point = np.array([x0, y0, z0])
-                cons = {'type': 'eq', 'fun': constraint} # constraint function
-                result = minimize(distance_eq, data_point, constraints=[cons]) # minimize the distance
-                shortest_distance = np.append(shortest_distance,np.abs(result.fun)*np.sign(constraint((x0, y0, z0 ))))
+    checker = Checker(choi_state)
+    choi, count = checker.choi_checker(index=[1], repeat=100, print_reason=False)
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    raw_plot = EllipsoidTool(corrected_bloch).plot(ax=ax,axes=axes, center=center, R=R, title='raw data',show_points=True, show_unit_sphere=True)
+    node.results["raw_plot"]= fig
+    node.results['results']['raw data'] = {
+        'axes': axes,
+        'center': center,
+        'R': R,
+        'volume': volume,
+        'param': param,
+        'choi state': choi,
+        'negativity': QuantumMemory.negativity(choi),
+        'memory robustness': QuantumMemory.memory_robustness(choi)
+        }
 
-            fidelity_data = [QuantumStateAnalysis([x[i],y[i],z[i]],[theta_data[i],phi_data[i]]).fidelity for i in range(len(filter_index))]
-            trace_distance_data = [QuantumStateAnalysis([x[i],y[i],z[i]],[theta_data[i],phi_data[i]]).trace_distance for i in range(len(filter_index))]
-            filter_index_sd = np.where(np.abs(shortest_distance)>data_thershold([shortest_distance.mean(),shortest_distance.std()],2)[0])
-            
-            # mitigation
-            conf_mat = q.resonator.confusion_matrix
-            inverse_conf_mat = np.linalg.inv(conf_mat)
-            px = (1-axes[0])/2
-            py = (1-axes[1])/2
-            pz = (1-axes[2])/2 
-            mitigate_axes= [1- inverse_conf_mat[1,0]+px*(inverse_conf_mat[1,0]-inverse_conf_mat[1,1])
-                            ,1- inverse_conf_mat[1,0]+py*(inverse_conf_mat[1,0]-inverse_conf_mat[1,1])
-                            ,1- inverse_conf_mat[1,0]+pz*(inverse_conf_mat[1,0]-inverse_conf_mat[1,1])]
-        analyze_results[q.name] = {
-            "center": center, 
-            "axes": axes, 
-            "rotation_matrix": R,
-            "volume": 4/3*np.pi*axes[0]*axes[1]*axes[2],
-            "shortest_distance_stats":[shortest_distance.mean(),shortest_distance.std()],
-            "theta_stats":theta_stats,
-            "phi_stats":phi_stats,
-            "fidelity_stats":[np.mean(fidelity_data),np.std(fidelity_data)],
-            "trace_distance_stats":[np.mean(trace_distance_data),np.std(trace_distance_data)],
-            "mitigate_axes":mitigate_axes
-            }
-        #
-        data_results[q.name] = {"theta":theta_diff[filter_index],
-                                "phi":phi_diff[filter_index],
-                                "shortest_distance":shortest_distance,
-                                "fidelity":fidelity_data
-                                }
-        print(f"qubit {q.name} has {len(filter_index)} data points")
-        from pprint import pprint
-        pprint(analyze_results)
-    node.results["analyze_results"] = analyze_results
-    # %% {Plotting}
-    # ellipsoid function
-    u,v = np.linspace(0, 2 * np.pi, 100), np.linspace(0, np.pi, 100)
-    x = np.outer(np.cos(u), np.sin(v))
-    y = np.outer(np.sin(u), np.sin(v))
-    z = np.outer(np.ones(np.size(u)), np.cos(v))
+    confusion_matrix = np.array(machine.qubits['q0'].resonator.confusion_matrix).T
+    x = data_xyz[:,0]
+    y = data_xyz[:,1]
+    z = data_xyz[:,2]
+    px, py, pz = (1-x)/2, (1-y)/2, (1-z)/2
 
-    grid = QubitGrid(ds, [q.grid_location for q in qubits],is_3d=True)
-    for ax, qubit in grid_iter(grid):
-        #original data
-        x_ellipsoid_ = analyze_results[qubit['qubit']]['axes'][0] * np.outer(np.cos(u), np.sin(v))
-        y_ellipsoid_ = analyze_results[qubit['qubit']]['axes'][1] * np.outer(np.sin(u), np.sin(v))
-        z_ellipsoid_ = analyze_results[qubit['qubit']]['axes'][2] * np.outer(np.ones_like(u), np.cos(v))
-        ellipsoid_points_ = np.dot(analyze_results[qubit['qubit']]['rotation_matrix'],np.array([x_ellipsoid_.ravel(), y_ellipsoid_.ravel(), z_ellipsoid_.ravel()]))
-        ellipsoid_points_ += analyze_results[qubit['qubit']]['center'].reshape(-1, 1)
-        x_ellipsoid_, y_ellipsoid_, z_ellipsoid_ = ellipsoid_points_.reshape(3, *x_ellipsoid_.shape)
+    new_px_0 = np.array([MLE([1-px[j],px[j]],confusion_matrix)[0] for j in range(len(px))])
+    new_py_0 = np.array([MLE([1-py[j],py[j]],confusion_matrix)[0] for j in range(len(py))])
+    new_pz_0 = np.array([MLE([1-pz[j],pz[j]],confusion_matrix)[0] for j in range(len(pz))])
+    
+    MLE_data_xyz = np.array([2*new_px_0-1,2*new_py_0-1,2*new_pz_0-1]).T
+    data_dm = np.array([bloch_vector_to_density_matrix(MLE_data_xyz[i]) for i in range(len(MLE_data_xyz))])
+    noise_analyzer = NoiseAnalyze(MLE_data_xyz,data_angle)
+    corrected_dm = noise_analyzer.corrected_dm
+    corrected_bloch = noise_analyzer.corrected_bloch
 
-        #mitigated data
-        x_ellipsoid_m = analyze_results[qubit['qubit']]['mitigate_axes'][0] * np.outer(np.cos(u), np.sin(v))
-        y_ellipsoid_m = analyze_results[qubit['qubit']]['mitigate_axes'][1] * np.outer(np.sin(u), np.sin(v))
-        z_ellipsoid_m = analyze_results[qubit['qubit']]['mitigate_axes'][2] * np.outer(np.ones_like(u), np.cos(v))
-        ellipsoid_points_ = np.dot(analyze_results[qubit['qubit']]['rotation_matrix'],np.array([x_ellipsoid_m.ravel(), y_ellipsoid_m.ravel(), z_ellipsoid_m.ravel()]))
-        ellipsoid_points_ += analyze_results[qubit['qubit']]['center'].reshape(-1, 1)
-        x_ellipsoid_m, y_ellipsoid_m, z_ellipsoid_m = ellipsoid_points_.reshape(3, *x_ellipsoid_m.shape)
-        
-        ax.scatter(
-            ds.sel(qubit =qubit['qubit']).Bloch_vector_x.values[filter_index],
-            ds.sel(qubit =qubit['qubit']).Bloch_vector_y.values[filter_index],
-            ds.sel(qubit =qubit['qubit']).Bloch_vector_z.values[filter_index], 
-            label="Data points", color="black", s=2
-            )
-        ax.plot_wireframe(x, y, z, color="blue", alpha=0.05, label=" Bloch sphere")
-        ax.plot_wireframe(x_ellipsoid_, y_ellipsoid_, z_ellipsoid_, color="red", alpha=0.08, label="fitted ellipsoid")
-        ax.plot_wireframe(x_ellipsoid_m, y_ellipsoid_m, z_ellipsoid_m, color="green", alpha=0.08, label="mitigated and fitted ellipsoid")
-        ax.plot_wireframe(x_ellipsoid_, y_ellipsoid_, z_ellipsoid_, color="red", alpha=0.08, label="fitted ellipsoid")
-        ax.set_title(f"{qubit['qubit']} Bloch Sphere")
-    node.results["figure_Bloch_vector"] = grid.fig
+    # first fit ellipsoid
+    center, axes, R, volume, param = noise_analyzer.ellipsoid_fit()
+    # compare the fitted ellipsoid with quadric form and find the best fit.
+    axes, R = find_best_fit(center, axes, R, param)
 
-    # plot the shortest distance
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    for ax, qubit in grid_iter(grid):
-        ax.plot(data_results[qubit['qubit']]['shortest_distance'],'.',label='distance')
-        ax.legend()
-        ax.set_xlabel("data points")
-        ax.set_ylabel("error(arb.)")
-        #ax.set_ylim(-0.02,0.02)
-        ax.set_title(f"{qubit['qubit']} distance")
-    node.results["figure_short_distance"] = grid.fig
+    qm_analyze = QuantumMemory(axes,center,R)
+    choi_state = qm_analyze.choi_state()
 
-    # plot the theta and phi error
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    for ax, qubit in grid_iter(grid):
-        ax.plot(data_results[qubit['qubit']]['phi'],'.',label='phi')
-        #ax.plot(ds.sel(qubit=q.name).Bloch_phi.values-ds.phi.values,'.',label='direct')
-        ax.plot(data_results[qubit['qubit']]['theta'],'.',label='theta')
-        
-        ax.legend()
-        ax.set_xlabel("data points")
-        ax.set_ylim(-np.pi,np.pi)
-        #ax.set_xlim(0,50)
-        ax.set_ylabel("error(rad)")
-        ax.set_title(f"{qubit['qubit']} phase and theta error")
+    checker = Checker(choi_state)
+    choi, count = checker.choi_checker(index=[1], repeat=100, print_reason=False)
 
-    node.results["figure_error"] = grid.fig
+    node.results['results']['MLE data'] = {
+        'axes': axes,
+        'center': center,
+        'R': R,
+        'volume': volume,
+        'param': param,
+        'choi state': choi,
+        'negativity': QuantumMemory.negativity(choi),
+        'memory robustness': QuantumMemory.memory_robustness(choi)
+        }
+    #plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    MLE_plot = EllipsoidTool(corrected_bloch).plot(ax=ax, axes=axes, center=center, R=R, title='MLE data', show_points=True, show_unit_sphere=True)
+    node.results["MLE_plot"]= fig
 
-# %% check the random theta and phi
-
-bins, x_labels = generate_bins_labels()
-figure = plt.figure(figsize=(8, 5))
-plot_histogram(theta_data, 'Theta', 221, bins, x_labels,ylim=55)
-plot_histogram(ds.theta, 'Theta', 223, bins, x_labels,ylim=55)
-plot_histogram(phi_data, 'Phi', 222, bins, x_labels,ylim=35)
-plot_histogram(ds.phi, 'Phi', 224, bins, x_labels,ylim=35)
-
-plt.suptitle(f"id = {load_data_id} total count = {len(theta_data)}")
-plt.tight_layout()
-node.results["figure_phi_theta_distrbution"] = figure
-
-# %% {Update_state}
-if not node.parameters.simulate:
-    if node.parameters.reset_type_thermal_or_active == "active" and load_data_id is None:
-        for i,j in zip(machine.active_qubit_names,"abcde"):
-            machine.qubits[i].xy.core = j
-            machine.qubits[i].resonator.core = j
 
 # %% {Save_results}
 if not node.parameters.simulate:

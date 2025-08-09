@@ -44,21 +44,35 @@ class NoiseAnalyze:
         return EllipsoidTool(self.corrected_bloch,convex=do_convex).plot(ax=ax,title=title)
 
 
-class QuantumMemory:
 
-    def __init__(self,axes,center,R):
-        """
-        Initialize the Quantum Memory with ellipsoid parameters.
-        axes: Lengths of the ellipsoid axes.
-        center: Center of the ellipsoid.
-        R: Rotation matrix for the ellipsoid.
-        """
+class QuantumMemory:
+    """
+    Utilities around a single-qubit quantum memory channel described by
+    an affine Bloch ellipsoid (axes, center, R). Provides helpers to
+    compute the Choi state and entanglement measures.
+    
+    After this change you can compute negativity directly from any Choi
+    matrix without instantiating the class via:
+        QuantumMemory.negativity(choi)
+    and also keep the old instance-style access via the precomputed
+    instance attributes:
+        qm = QuantumMemory(axes, center, R)
+        qm.negativity  # float
+        qm.memory_robustness  # float
+    """
+
+    def __init__(self, axes, center, R):
+        """Store ellipsoid parameters and precompute metrics for this instance."""
         self.axes = axes
         self.center = center
         self.R = R
         self.choi = self.choi_state()
-        self.negativity = self.negativity()
-        self.memory_robustness = self.memory_robustness()
+
+        # Precompute commonly used scalars as instance attributes.
+        # These names intentionally shadow the class static methods only on this
+        # instance, so existing code like `qm.negativity` keeps working.
+        self.negativity = QuantumMemory.negativity(self.choi)
+        self.memory_robustness = QuantumMemory.memory_robustness(self.choi)
     
     def choi_state(self):
         pauli_matrices = [
@@ -70,7 +84,7 @@ class QuantumMemory:
         B = np.array(self.center)
         radii = np.array(self.axes)
         eigvecs = np.array(self.R)
-        #T = eigvecs @ np.diag(radii)
+        # T maps Bloch vector components; convention kept from your original code.
         T = np.diag(radii) @ eigvecs.T
 
         chi = np.zeros((4, 4), dtype=complex)
@@ -89,25 +103,37 @@ class QuantumMemory:
         choi /= np.trace(choi)
         return choi
 
-    def partial_transpose(self, sys=1):
-        choi_tensor = self.choi.reshape(2, 2, 2,2)
+    @staticmethod
+    def partial_transpose(choi, sys=1):
+        """Partial transpose of a 2-qubit density matrix `choi`.
+        `sys` = 0 (transpose first qubit) or 1 (transpose second qubit).
+        """
+        choi_tensor = choi.reshape(2, 2, 2, 2)
         if sys == 0:
-            # partial transpose on system A
-            choi_PT = choi_tensor.swapaxes(0,2)
+            choi_PT = choi_tensor.swapaxes(0, 2)
         elif sys == 1:
-            # partial transpose on system B
-            choi_PT = choi_tensor.swapaxes(1,3)
+            choi_PT = choi_tensor.swapaxes(1, 3)
         else:
             raise ValueError("sys must be 0 or 1")
-        return choi_PT.reshape(4,4)
+        return choi_PT.reshape(4, 4)
 
-    def negativity(self):
-        rho_PT = self.partial_transpose(sys=1)
+    @staticmethod
+    def negativity(choi, sys=1):
+        """Return the entanglement negativity of `choi`.
+        This is the sum of absolute values of the negative eigenvalues of the
+        partial transpose (Peres-Horodecki criterion).
+        Usage: `QuantumMemory.negativity(choi)`.
+        """
+        rho_PT = QuantumMemory.partial_transpose(choi, sys=sys)
         eigvals = eigvalsh(rho_PT)
-        return -eigvals[eigvals < 0].sum() 
+        return float(-eigvals[eigvals < 0].sum())
 
-    def memory_robustness(self):
-        return entanglementRobustness(self.choi)
+    @staticmethod
+    def memory_robustness(choi):
+        """Return the entanglement robustness of `choi`.
+        Usage: `QuantumMemory.memory_robustness(choi)`.
+        """
+        return float(entanglementRobustness(choi))
 
 class Checker:
     """
@@ -164,9 +190,9 @@ class Checker:
             pt_trace_is_one = trace_norm(pt,0.5*np.eye(2)) < tol
             #pt_trace_is_one = trace_norm(pt,np.eye(2)) < tol
 
-            print(trace_norm(pt,0.5*np.eye(2)))
 
             if is_hermitian and is_psd and trace_is_one and pt_trace_is_one:
+                print(f"After {count} iterations, the Choi state is valid.")
                 break
             else:
                 print_reason = True if i == repeat - 1 else print_reason
@@ -181,7 +207,6 @@ class Checker:
                     if not pt_trace_is_one:
                         print(f"❌ Partial trace of the Choi state is not 1. Got trace = {trace_norm(pt,0.5*np.eye(2))}")
             choi = CorrectChoi(choi).project_to_cp_tp(method='Trace distance')
-            print(trace_norm(pt,0.5*np.eye(2)))
         return choi,count
 
 
