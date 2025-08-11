@@ -29,7 +29,7 @@ class Parameters(NodeParameters):
     qubits: Optional[List[str]] = ["q1"]
     num_averages: int = 2000
     phase_span: float = 0.5
-    num_steps: int = 251
+    phase_step: float = 0.001
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     mitigation: bool = True
@@ -61,8 +61,8 @@ num_qubits = len(qubits)
 
 # %% {QUA_program}
 phase_span = node.parameters.phase_span
-n_steps = node.parameters.num_steps
-phase_shift_list = np.linspace(-phase_span/2, phase_span/2, n_steps)
+phase_step = node.parameters.phase_step
+phase_shift_list = np.arange(-phase_span/2, phase_span/2 + phase_step, phase_step)
 n_avg = node.parameters.num_averages  # The number of averages
 flux_point = node.parameters.flux_point_joint_or_independent
 reset_type = node.parameters.reset_type_thermal_or_active
