@@ -43,8 +43,9 @@ import xarray as xr
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ["q1"]
-    num_runs: int = 60000
+    qubits: Optional[List[str]] = ["q2"]
+    num_averages: int = 200
+    num_runs: int = 10000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     operation_name: str = "readout"  # or "readout_QND"
@@ -107,7 +108,7 @@ def iq_blobs_program(qubit):
             # ground iq blobs for all qubits
             save(n, n_st)
             if reset_type == "active":
-                active_reset(qubit, "readout",max_attempts=100,wait_time=100)
+                active_reset(qubit, "readout",max_attempts=15,wait_time=500)
             elif reset_type == "thermal":
                 qubit.wait(4 * qubit.thermalization_time * u.ns)
             else:
@@ -123,13 +124,13 @@ def iq_blobs_program(qubit):
             qubit.align()
             # excited iq blobs for all qubits
             if reset_type == "active":
-                active_reset(qubit, "readout",max_attempts=100,wait_time=100)
+                active_reset(qubit, "readout",max_attempts=15,wait_time=500)
             elif reset_type == "thermal":
                 qubit.wait(qubit.thermalization_time * u.ns)
             else:
                 raise ValueError(f"Unrecognized reset type {reset_type}.")
             qubit.align()
-            qubit.xy.play("x180")
+            qubit.xy.play("y180")
             qubit.align()
             qubit.resonator.measure(operation_name, amplitude_scale=readout_scale, qua_vars=(I_e[0], Q_e[0]))
             qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)

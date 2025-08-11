@@ -58,13 +58,13 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ["q1_q2"]
+    qubit_pairs: Optional[List[str]] = None
     num_shots: int = 2000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
-    load_data_id: Optional[int] = None
+    load_data_id: Optional[int] = 1390
 
 
 node = QualibrationNode(
@@ -85,7 +85,6 @@ else:
     qubit_pairs = [machine.qubit_pairs[qp] for qp in node.parameters.qubit_pairs]
 
 num_qubit_pairs = len(qubit_pairs)
-
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -385,9 +384,12 @@ results_xr = results_xr.rename({"dim_0": "state"})
 results_xr = results_xr.stack(
         tomo_axis=['tomo_axis_target', 'tomo_axis_control'])
 
+print(results_xr)
 corrected_results = []
+print([qp.name for qp in qubit_pairs])
 for qp in qubit_pairs:
-    corrected_results_qp = [] 
+    print(qp.name)
+    corrected_results_qp = []
     for tomo_axis_control in [0,1,2]:
         corrected_results_control = []
         for tomo_axis_target in [0,1,2]:
@@ -403,8 +405,8 @@ for qp in qubit_pairs:
     corrected_results.append(corrected_results_qp)
 
     # %%
-
     # Convert corrected_results to an xarray DataArray
+    print(np.array(corrected_results).shape)
     corrected_results_xr = xr.DataArray(
         corrected_results,
         dims=['qubit', 'tomo_axis_control', 'tomo_axis_target', 'state'],

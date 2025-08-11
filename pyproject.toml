@@ -11,10 +11,11 @@ dependencies = [
     "cvxpy>=1.6.6",
     "jupyter>=1.1.1",
     "lmfit>=1.3.3",
+    "notebook==7.5.0a0",
     "pennylane>=0.41.1",
     "qiskit==1.4.2",
     "qiskit-experiments>=0.10.0",
-    "qm-qua==1.2.1",
+    "qm-qua==1.2.2a4",
     "qualang-tools>=0.18.0",
     "qualibrate==0.2.0",
     "quam",
@@ -25,18 +26,18 @@ dependencies = [
 ]
 
 [tool.uv]
+package = true
 prerelease = "allow"
 
 [tool.uv.sources]
-quam = { git = "https://github.com/qua-platform/quam.git"}
-quam-libs = { workspace = true }
-
-[tool.setuptools.packages.find]
-where = ["quam_libs"]
-include = ["*"]
-exclude = []
+quam_libs = { path = "./", editable = true }
+quam = { git = "https://github.com/qua-platform/quam.git", tag = "v0.4.0" }
 
 [dependency-groups]
 dev = [
-    "quam-libs",
+    "quam_libs",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["quam_libs*"]

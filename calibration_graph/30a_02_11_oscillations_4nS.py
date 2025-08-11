@@ -53,7 +53,7 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ['q0_q2']
+    qubit_pairs: Optional[List[str]] = ['q1_q2']
     num_averages: int = 200
     max_time_in_ns: int = 100
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
@@ -179,7 +179,7 @@ with program() as CPhase_Oscillations:
                     if node.parameters.reset_type == "active":
                         active_reset_gef(qp.qubit_control)
                         qp.align()
-                        active_reset(qp.qubit_target)
+                        active_reset(qp.qubit_target, max_attempts=15, wait_time=100)
                         qp.align()
                     else:
                         wait(qp.qubit_control.thermalization_time * u.ns)

@@ -40,7 +40,7 @@ import xarray as xr
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ["q2"]
     num_averages: int = 5000
     operation: str = "x180"
     min_amp_factor: float = -2
@@ -112,7 +112,7 @@ with program() as drag_calibration:
                 with for_(*from_array(a, amps)):
                     # Initialize the qubits
                     if reset_type == "active":
-                        active_reset(qubit, "readout",max_attempts=100,wait_time=100)
+                        active_reset(qubit, "readout",max_attempts=15,wait_time=500)
                     else:
                         qubit.wait(qubit.thermalization_time * u.ns)
 

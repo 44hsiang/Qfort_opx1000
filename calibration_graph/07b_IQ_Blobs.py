@@ -43,7 +43,7 @@ import xarray as xr
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q1']
+    qubits: Optional[List[str]] = ["q2"]
     num_runs: int = 5000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
@@ -108,7 +108,7 @@ with program() as iq_blobs:
             # ground iq blobs for all qubits
             save(n, n_st)
             if reset_type == "active":
-                active_reset(qubit, "readout",max_attempts=15,wait_time=4)
+                active_reset(qubit, "readout",max_attempts=15,wait_time=500)
             elif reset_type == "thermal":
                 qubit.wait(4* qubit.thermalization_time * u.ns)
             else:

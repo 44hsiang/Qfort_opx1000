@@ -30,7 +30,7 @@ from qiskit.visualization.bloch import Bloch
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = ['q1']
-    num_runs: int = 10000
+    num_runs: int = 40000
     min_wait_time_in_ns: int = 16
     max_time_in_ns: int = 200
     wait_time_step_in_ns: int = 4
@@ -103,7 +103,7 @@ def QuantumMemory_program(qubit,theta=theta,phi=phi):
                 with for_(tomo_axis, 0, tomo_axis < 3, tomo_axis + 1):
 
                     if reset_type == "active":
-                        active_reset(qubit, "readout",max_attempts=100,wait_time=100)
+                        active_reset(qubit, "readout",max_attempts=15,wait_time=500)
                     elif reset_type == "thermal":
                         qubit.wait(4 * qubit.thermalization_time * u.ns)
                     else:
@@ -153,7 +153,6 @@ if node.parameters.simulate:
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
-    plt.show()
     # Save the figure
     node.results = {"figure": plt.gcf()}
     node.machine = machine
@@ -194,7 +193,7 @@ if not node.parameters.simulate:
     fit_results = {}
     for q in qubits:
         fit_results[q.name]={}
-        params, covariance = curve_fit(linear_func, ds.timedelay, np.unwrap(ds.sel(qubit=q.name).Bloch_phi) % 180)
+        params, covariance = curve_fit(linear_func, ds.timedelay, ds.sel(qubit=q.name).Bloch_phi)
         fit_results[q.name]["slope"] = params[0]
         fit_results[q.name]["intercept"] = params[1]
     
@@ -207,7 +206,6 @@ if not node.parameters.simulate:
         ax.set_xlabel('time_delay(ns)')
 
     node.results["figure_phase"] = grid.fig
-    plt.show()
     grid = QubitGrid(ds, [q.grid_location for q in qubits],is_3d=True)
     for ax, qubit in grid_iter(grid):
         bloch = Bloch(axes=ax,font_size=12)
@@ -217,7 +215,6 @@ if not node.parameters.simulate:
         bloch.vector_color = ['r','b','g']
         bloch.vector_labels = ['raw','mitigated','ideal']
         bloch.render(title=qubit['qubit'])
-    plt.show()
     node.results["figure_Bloch_vector"] = grid.fig
     # %% {Update_state}
     if not node.parameters.simulate:

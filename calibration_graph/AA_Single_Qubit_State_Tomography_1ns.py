@@ -3,6 +3,7 @@
 Create date: 2025/6/21
 0A_Single_Qubit_State_Tomography.py:
 """
+# TODO: Cannot use baked for waiting process
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 
@@ -16,6 +17,7 @@ from qualang_tools.loops import from_array
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
+from qualang_tools.bakery import baking
 from quam_libs.quantum_memory.marcos import MLE, project_to_cptp_1q
 from qm import SimulationConfig
 from qm.qua import *
@@ -26,20 +28,36 @@ import xarray as xr
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ["q3"]
-    num_averages: int = 10000
-    operation: Optional[Literal["y180", "x90", "y90", "-x90","-y90"]] = "y90"
-    delay: List[int] = list(range(4, 301, 1))  # delay time must be larger than 4
+    qubits: Optional[List[str]] = ["q1"]
+    num_averages: int = 2
+    operation: Optional[Literal["y180", "x90", "y90", "-x90","-y90"]] = None
+    max_delay: int = 4
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     mitigation: bool = True
-    simulate: bool = False
-    simulation_duration_ns: int = 2000
+    simulate: bool = True
+    simulation_duration_ns: int = 20000
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
 
-node = QualibrationNode(name="AA_Single_Qubit_State_Tomography", parameters=Parameters())
+
+def baked_waveform(waveform_amp, qubit, max_time):
+    pulse_segments = []  # Stores the baking objects
+    # Create the different baked sequences, each one corresponding to a different truncated duration
+    waveform = [waveform_amp] * max_time
+
+    for i in range(1, max_time + 1):  # from first item up to pulse_duration (16)
+        with baking(config, padding_method="left") as b:
+            wf = waveform[:i]
+            b.add_op(f"flux_pulse_{qubit.name}", qubit.z.name, wf)
+            b.play(f"flux_pulse_{qubit.name}", qubit.z.name)
+        # Append the baking object in the list to call it from the QUA program
+        pulse_segments.append(b)
+
+    return pulse_segments
+
+node = QualibrationNode(name="AA_Single_Qubit_State_Tomography_1ns", parameters=Parameters())
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -61,24 +79,21 @@ num_qubits = len(qubits)
 
 # %% {QUA_program}
 operation = node.parameters.operation
-if isinstance(node.parameters.delay, int):
-    delay = [node.parameters.delay]
-elif isinstance(node.parameters.delay, list):
-    delay = []
-    for d in node.parameters.delay:
-        if isinstance(node.parameters.delay[0], int):
-            delay.append(d)
+if isinstance(node.parameters.max_delay, int):
+    max_delay = node.parameters.max_delay
 else:
-    raise TypeError("Delay must be a list of int or int")
+    raise TypeError("Max delay must be int")
 n_avg = node.parameters.num_averages  # The number of averages
 flux_point = node.parameters.flux_point_joint_or_independent
 reset_type = node.parameters.reset_type_thermal_or_active
 mitigation = node.parameters.mitigation
 
+baked_signals = baked_waveform(0, qubits[0], max_time=max_delay)
+
 with program() as state_tomography:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     c = declare(int)  # QUA variable for switching between projections
-    d = declare(int)
+    idx = declare(int)
     state = [declare(int) for _ in range(num_qubits)]
     state_st = [declare_stream() for _ in range(num_qubits)]
 
@@ -88,10 +103,10 @@ with program() as state_tomography:
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
-            with for_(*from_array(d, delay)):
+            with for_(idx, 0, idx<max_delay, idx):
                 with for_(c, 0, c<=2, c+1):
                     if reset_type == "active":
-                        active_reset(qubit, "readout",max_attempts=15,wait_time=500)
+                        active_reset(qubit, "readout",max_attempts=100,wait_time=100)
                     elif reset_type == "thermal":
                         qubit.wait(4 * qubit.thermalization_time * u.ns)
                     else:
@@ -100,13 +115,12 @@ with program() as state_tomography:
 
                     if operation is not None:
                         qubit.xy.play(operation)
-                    else:
-                        qubit.xy.play("y180", amplitude_scale=0)
-                    with if_(d >= 4):
-                        qubit.xy.wait(d)
-                    qubit.xy.align()
+                    with switch_(idx):
+                        for j in range(max_delay):
+                            with case_(j):
+                                baked_signals[j].run()
+                    qubit.align()
 
-                    # qubit.xy.frame_rotation_2pi(-qubit.extras["phi_offset"])
                     with switch_(c):
                         with case_(0):  # Project along X axis
                             qubit.xy.play("-y90")
@@ -125,7 +139,7 @@ with program() as state_tomography:
     with stream_processing():
         n_st.save("iteration")
         for i in range(num_qubits):
-            state_st[i].buffer(3).buffer(len(delay)).average().save(f"state{i+1}")
+            state_st[i].buffer(3).buffer(max_delay).average().save(f"state{i+1}")
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
@@ -143,6 +157,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
+    delay = np.arange(1, max_delay+1, 1)
     # Prepare data for saving
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         if not node.parameters.multiplexed:
@@ -167,15 +182,12 @@ elif node.parameters.load_data_id is None:
         for i in range(len(delay)):
             p = []
             for j in range(3):
-                # pi = MLE(
-                #     np.array(
-                #         [1 - ds.state.values[0, i, j], ds.state.values[0, i, j]]
-                #     ),
-                #     qubit.resonator.confusion_matrix
-                # )
-                pi = np.linalg.inv(qubit.resonator.confusion_matrix) @ np.array(
+                pi = MLE(
+                    np.array(
                         [1 - ds.state.values[0, i, j], ds.state.values[0, i, j]]
-                    )
+                    ),
+                    qubit.resonator.confusion_matrix
+                )
                 p.append(pi[1])
             coef_MLE.append(p)
         coef_MLE = np.array(coef_MLE)
@@ -199,7 +211,6 @@ elif node.parameters.load_data_id is None:
                 ds.state.values[0, i, 2] * Z
         )
     node.results["results"][qubits[0].name] = {}
-    node.results["results"][qubits[0].name]["delay_time"] = delay * 4
     node.results["results"][qubits[0].name]["density_matrix"] = density_matrix
 
     if mitigation:
@@ -215,101 +226,94 @@ elif node.parameters.load_data_id is None:
             density_matrix_mitigation[i, :, :] = dmm
         node.results["results"][qubits[0].name]["density_matrix_mitigation"] = density_matrix_mitigation
 
+    if __name__ == "__main__":
+        import matplotlib
 
-    import matplotlib
+        font = {'weight': 'bold',
+                'size': 25}
+        matplotlib.rc('font', **font)
 
-    font = {'weight': 'bold',
-            'size': 25}
-    matplotlib.rc('font', **font)
+        vmin, vmax = -0.1, 1
+        fig = plt.figure(figsize=(28, 10))
+        ax = fig.subplots(2, 6)
+        plt.suptitle(f"{qubits[0].name} Density matrix for different readout delay", fontweight='bold')
 
-    vmin, vmax = -0.1, 1
-    fig = plt.figure(figsize=(28, 10))
-    ax = fig.subplots(2, 6)
-    plt.suptitle(f"{qubits[0].name} Density matrix for different readout delay", fontweight='bold')
-
-    ax[0, 0].imshow(np.zeros((2, 2)), vmin=-1, vmax=1, cmap="bwr")
-    ax[0, 0].text(0.5, 0.5, "Real", ha="center", va="center")
-    ax[0, 0].axis("off")
-    ax[1, 0].imshow(np.zeros((2, 2)), vmin=-1, vmax=1, cmap="bwr")
-    ax[1, 0].text(0.5, 0.5, "Imag", ha="center", va="center")
-    ax[1, 0].axis("off")
-
-    for i in range(1, 6):
-        real = density_matrix[i - 1].real
-        imag = density_matrix[i - 1].imag
-        im = ax[0, i].imshow(real, vmin=vmin, vmax=vmax, cmap="rainbow")
-        ax[0, i].set_title(f"{delay[i - 1]} cycles")
-        ax[0, i].set_xticks([0, 1])
-        ax[0, i].set_yticks([0, 1])
-        ax[1, i].imshow(imag, vmin=vmin, vmax=vmax, cmap="rainbow")
-        ax[1, i].set_xticks([0, 1])
-        ax[1, i].set_yticks([0, 1])
-        for j in range(2):
-            for k in range(2):
-                c = "k" if j == k else "w"
-                ax[0, i].text(j, k, f"{real[j, k]:.2f}", ha="center", va="center", color=c)
-        for j in range(2):
-            for k in range(2):
-                c = "k" if j == k else "w"
-                ax[1, i].text(j, k, f"{imag[j, k]:.2f}", ha="center", va="center", color=c)
-
-    fig.subplots_adjust(right=0.8)
-    cbar_ax = fig.add_axes([0.82, 0.15, 0.02, 0.7])
-    fig.colorbar(im, cax=cbar_ax)
-
-    plt.show()
-
-    node.results["figs"] = fig
-
-    if mitigation:
-        fig_mitigation = plt.figure(figsize=(28, 10))
-        ax_mitigation = fig_mitigation.subplots(2, 6)
-        plt.suptitle(f"{qubits[0].name} Density matrix for different readout delay with Readout Mitigation", fontweight='bold')
-
-        ax_mitigation[0, 0].imshow(np.zeros((2, 2)), vmin=-1, vmax=1, cmap="bwr")
-        ax_mitigation[0, 0].text(0.5, 0.5, "Real", ha="center", va="center")
-        ax_mitigation[0, 0].axis("off")
-        ax_mitigation[1, 0].imshow(np.zeros((2, 2)), vmin=-1, vmax=1, cmap="bwr")
-        ax_mitigation[1, 0].text(0.5, 0.5, "Imag", ha="center", va="center")
-        ax_mitigation[1, 0].axis("off")
+        ax[0, 0].imshow(np.zeros((2, 2)), vmin=-1, vmax=1, cmap="bwr")
+        ax[0, 0].text(0.5, 0.5, "Real", ha="center", va="center")
+        ax[0, 0].axis("off")
+        ax[1, 0].imshow(np.zeros((2, 2)), vmin=-1, vmax=1, cmap="bwr")
+        ax[1, 0].text(0.5, 0.5, "Imag", ha="center", va="center")
+        ax[1, 0].axis("off")
 
         for i in range(1, 6):
-            real = density_matrix_mitigation[i - 1].real
-            imag = density_matrix_mitigation[i - 1].imag
-            im_mitigation = ax_mitigation[0, i].imshow(real, vmin=vmin, vmax=vmax, cmap="rainbow")
-            ax_mitigation[0, i].set_title(f"{delay[i - 1]} cycles")
-            ax_mitigation[0, i].set_xticks([0, 1])
-            ax_mitigation[0, i].set_yticks([0, 1])
-            ax_mitigation[1, i].imshow(imag, vmin=vmin, vmax=vmax, cmap="rainbow")
-            ax_mitigation[1, i].set_xticks([0, 1])
-            ax_mitigation[1, i].set_yticks([0, 1])
+            real = density_matrix[i - 1].real
+            imag = density_matrix[i - 1].imag
+            im = ax[0, i].imshow(real, vmin=vmin, vmax=vmax, cmap="rainbow")
+            ax[0, i].set_title(f"{delay[i - 1]} cycles")
+            ax[0, i].set_xticks([0, 1])
+            ax[0, i].set_yticks([0, 1])
+            ax[1, i].imshow(imag, vmin=vmin, vmax=vmax, cmap="rainbow")
+            ax[1, i].set_xticks([0, 1])
+            ax[1, i].set_yticks([0, 1])
             for j in range(2):
                 for k in range(2):
                     c = "k" if j == k else "w"
-                    ax_mitigation[0, i].text(j, k, f"{real[j, k]:.2f}", ha="center", va="center", color=c)
+                    ax[0, i].text(j, k, f"{real[j, k]:.2f}", ha="center", va="center", color=c)
             for j in range(2):
                 for k in range(2):
                     c = "k" if j == k else "w"
-                    ax_mitigation[1, i].text(j, k, f"{imag[j, k]:.2f}", ha="center", va="center", color=c)
+                    ax[1, i].text(j, k, f"{imag[j, k]:.2f}", ha="center", va="center", color=c)
 
-        fig_mitigation.subplots_adjust(right=0.8)
-        cbar_ax_mitigation = fig_mitigation.add_axes([0.82, 0.15, 0.02, 0.7])
-        fig_mitigation.colorbar(im_mitigation, cax=cbar_ax_mitigation)
+        fig.subplots_adjust(right=0.8)
+        cbar_ax = fig.add_axes([0.82, 0.15, 0.02, 0.7])
+        fig.colorbar(im, cax=cbar_ax)
 
         plt.show()
 
-        node.results["mitigation_figs"] = fig_mitigation
+        node.results["figs"] = fig
 
-    # %% {Update_state}
-    if not node.parameters.simulate:
-        if node.parameters.reset_type_thermal_or_active == "active":
-            for i, j in zip(machine.active_qubit_names, "abcde"):
-                machine.qubits[i].xy.core = j
-                machine.qubits[i].resonator.core = j
+        if mitigation:
+            fig_mitigation = plt.figure(figsize=(28, 10))
+            ax_mitigation = fig_mitigation.subplots(2, 6)
+            plt.suptitle(f"{qubits[0].name} Density matrix for different readout delay with Readout Mitigation", fontweight='bold')
 
-    # %% {Save_results}
-    if not node.parameters.simulate:
-        node.outcomes = {q.name: "successful" for q in qubits}
-        node.results["initial_parameters"] = node.parameters.model_dump()
-        node.machine = machine
-        node.save()
+            ax_mitigation[0, 0].imshow(np.zeros((2, 2)), vmin=-1, vmax=1, cmap="bwr")
+            ax_mitigation[0, 0].text(0.5, 0.5, "Real", ha="center", va="center")
+            ax_mitigation[0, 0].axis("off")
+            ax_mitigation[1, 0].imshow(np.zeros((2, 2)), vmin=-1, vmax=1, cmap="bwr")
+            ax_mitigation[1, 0].text(0.5, 0.5, "Imag", ha="center", va="center")
+            ax_mitigation[1, 0].axis("off")
+
+            for i in range(1, 6):
+                real = density_matrix_mitigation[i - 1].real
+                imag = density_matrix_mitigation[i - 1].imag
+                im_mitigation = ax_mitigation[0, i].imshow(real, vmin=vmin, vmax=vmax, cmap="rainbow")
+                ax_mitigation[0, i].set_title(f"{delay[i - 1]} cycles")
+                ax_mitigation[0, i].set_xticks([0, 1])
+                ax_mitigation[0, i].set_yticks([0, 1])
+                ax_mitigation[1, i].imshow(imag, vmin=vmin, vmax=vmax, cmap="rainbow")
+                ax_mitigation[1, i].set_xticks([0, 1])
+                ax_mitigation[1, i].set_yticks([0, 1])
+                for j in range(2):
+                    for k in range(2):
+                        c = "k" if j == k else "w"
+                        ax_mitigation[0, i].text(j, k, f"{real[j, k]:.2f}", ha="center", va="center", color=c)
+                for j in range(2):
+                    for k in range(2):
+                        c = "k" if j == k else "w"
+                        ax_mitigation[1, i].text(j, k, f"{imag[j, k]:.2f}", ha="center", va="center", color=c)
+
+            fig_mitigation.subplots_adjust(right=0.8)
+            cbar_ax_mitigation = fig_mitigation.add_axes([0.82, 0.15, 0.02, 0.7])
+            fig_mitigation.colorbar(im_mitigation, cax=cbar_ax_mitigation)
+
+            plt.show()
+
+            node.results["mitigation_figs"] = fig_mitigation
+
+        # %% {Save_results}
+        if not node.parameters.simulate:
+            node.outcomes = {q.name: "successful" for q in qubits}
+            node.results["initial_parameters"] = node.parameters.model_dump()
+            node.machine = machine
+            node.save()

@@ -41,9 +41,10 @@ import xarray as xr
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ["q1"]
+    qubits: Optional[List[str]] = ["q0"]
     use_state_discrimination: bool = True
     use_strict_timing: bool = False
+    imperfection: float = 0.5
     num_random_sequences: int = 2000  # Number of random sequences
     num_averages: int = 1
     max_circuit_depth: int = 1000  # Maximum circuit depth
@@ -80,6 +81,7 @@ num_qubits = len(qubits)
 
 
 # %% {QUA_program_parameters}
+imperfection = node.parameters.imperfection
 num_of_sequences = node.parameters.num_random_sequences  # Number of random sequences
 # Number of averaging loops for each random sequence
 n_avg = node.parameters.num_averages
@@ -125,79 +127,80 @@ def generate_sequence():
     return sequence, inv_gate
 
 
-def play_sequence(sequence_list, depth, qubit: Transmon):
+def play_sequence(sequence_list, depth, qubit: Transmon, imperfection: float):
     i = declare(int)
+    a = declare(float, value=imperfection)
     with for_(i, 0, i <= depth, i + 1):
         with switch_(sequence_list[i], unsafe=True):
             with case_(0):
                 qubit.xy.wait(qubit.xy.operations["x180"].length // 4)
             with case_(1):  # x180
-                qubit.xy.play("x180")
+                qubit.xy.play("x180", amplitude_scale=a)
             with case_(2):  # y180
-                qubit.xy.play("y180")
+                qubit.xy.play("y180", amplitude_scale=a)
             with case_(3):  # Z180
-                qubit.xy.play("y180")
-                qubit.xy.play("x180")
+                qubit.xy.play("y180", amplitude_scale=a)
+                qubit.xy.play("x180", amplitude_scale=a)
             with case_(4):  # Z90 X180 Z-180
-                qubit.xy.play("x90")
-                qubit.xy.play("y90")
+                qubit.xy.play("x90", amplitude_scale=a)
+                qubit.xy.play("y90", amplitude_scale=a)
             with case_(5):  # Z-90 Y-90 Z-90
-                qubit.xy.play("x90")
-                qubit.xy.play("-y90")
+                qubit.xy.play("x90", amplitude_scale=a)
+                qubit.xy.play("-y90", amplitude_scale=a)
             with case_(6):  # Z-90 X180 Z-180
-                qubit.xy.play("-x90")
-                qubit.xy.play("y90")
+                qubit.xy.play("-x90", amplitude_scale=a)
+                qubit.xy.play("y90", amplitude_scale=a)
             with case_(7):  # Z-90 Y90 Z-90
-                qubit.xy.play("-x90")
-                qubit.xy.play("-y90")
+                qubit.xy.play("-x90", amplitude_scale=a)
+                qubit.xy.play("-y90", amplitude_scale=a)
             with case_(8):  # X90 Z90
-                qubit.xy.play("y90")
-                qubit.xy.play("x90")
+                qubit.xy.play("y90", amplitude_scale=a)
+                qubit.xy.play("x90", amplitude_scale=a)
             with case_(9):  # X-90 Z-90
-                qubit.xy.play("y90")
-                qubit.xy.play("-x90")
+                qubit.xy.play("y90", amplitude_scale=a)
+                qubit.xy.play("-x90", amplitude_scale=a)
             with case_(10):  # z90 X90 Z90
-                qubit.xy.play("-y90")
-                qubit.xy.play("x90")
+                qubit.xy.play("-y90", amplitude_scale=a)
+                qubit.xy.play("x90", amplitude_scale=a)
             with case_(11):  # z90 X-90 Z90
-                qubit.xy.play("-y90")
-                qubit.xy.play("-x90")
+                qubit.xy.play("-y90", amplitude_scale=a)
+                qubit.xy.play("-x90", amplitude_scale=a)
             with case_(12):  # x90
-                qubit.xy.play("x90")
+                qubit.xy.play("x90", amplitude_scale=a)
             with case_(13):  # -x90
-                qubit.xy.play("-x90")
+                qubit.xy.play("-x90", amplitude_scale=a)
             with case_(14):  # y90
-                qubit.xy.play("y90")
+                qubit.xy.play("y90", amplitude_scale=a)
             with case_(15):  # -y90
-                qubit.xy.play("-y90")
+                qubit.xy.play("-y90", amplitude_scale=a)
             with case_(16):  # Z90
-                qubit.xy.play("-x90")
-                qubit.xy.play("y90")
-                qubit.xy.play("x90")
+                qubit.xy.play("-x90", amplitude_scale=a)
+                qubit.xy.play("y90", amplitude_scale=a)
+                qubit.xy.play("x90", amplitude_scale=a)
             with case_(17):  # -Z90
-                qubit.xy.play("-x90")
-                qubit.xy.play("-y90")
-                qubit.xy.play("x90")
+                qubit.xy.play("-x90", amplitude_scale=a)
+                qubit.xy.play("-y90", amplitude_scale=a)
+                qubit.xy.play("x90", amplitude_scale=a)
             with case_(18):  # Y-90 Z-90
-                qubit.xy.play("x180")
-                qubit.xy.play("y90")
+                qubit.xy.play("x180", amplitude_scale=a)
+                qubit.xy.play("y90", amplitude_scale=a)
             with case_(19):  # Y90 Z90
-                qubit.xy.play("x180")
-                qubit.xy.play("-y90")
+                qubit.xy.play("x180", amplitude_scale=a)
+                qubit.xy.play("-y90", amplitude_scale=a)
             with case_(20):  # Y90 Z-90
-                qubit.xy.play("y180")
-                qubit.xy.play("x90")
+                qubit.xy.play("y180", amplitude_scale=a)
+                qubit.xy.play("x90", amplitude_scale=a)
             with case_(21):  # Y-90 Z90
-                qubit.xy.play("y180")
-                qubit.xy.play("-x90")
+                qubit.xy.play("y180", amplitude_scale=a)
+                qubit.xy.play("-x90", amplitude_scale=a)
             with case_(22):  # x90 Z-90
-                qubit.xy.play("x90")
-                qubit.xy.play("y90")
-                qubit.xy.play("x90")
+                qubit.xy.play("x90", amplitude_scale=a)
+                qubit.xy.play("y90", amplitude_scale=a)
+                qubit.xy.play("x90", amplitude_scale=a)
             with case_(23):  # -x90 Z90
-                qubit.xy.play("-x90")
-                qubit.xy.play("y90")
-                qubit.xy.play("-x90")
+                qubit.xy.play("-x90", amplitude_scale=a)
+                qubit.xy.play("y90", amplitude_scale=a)
+                qubit.xy.play("-x90", amplitude_scale=a)
 
 
 # %% {QUA_program}
@@ -238,7 +241,7 @@ with program() as randomized_benchmarking_individual:
                     with for_(n, 0, n < n_avg, n + 1):
                         # Initialize the qubits
                         if reset_type == "active":
-                            active_reset(qubit, "readout",max_attempts=15,wait_time=500)
+                            active_reset(qubit, "readout",max_attempts=100,wait_time=100)
                         else:
                             qubit.resonator.wait(qubit.thermalization_time * u.ns)
                         # Align the two elements to play the sequence after qubit initialization
@@ -247,9 +250,9 @@ with program() as randomized_benchmarking_individual:
                         if strict_timing:
                             with strict_timing_():
                                 # Play the random sequence of desired depth
-                                play_sequence(sequence_list, depth, qubit)
+                                play_sequence(sequence_list, depth, qubit, imperfection)
                         else:
-                            play_sequence(sequence_list, depth, qubit)
+                            play_sequence(sequence_list, depth, qubit, imperfection)
                         # Align the two elements to measure after playing the circuit.
                         qubit.align()
                         readout_state(qubit, state[i])
@@ -324,9 +327,9 @@ with program() as randomized_benchmarking_multiplexed:
                         if strict_timing:
                             with strict_timing_():
                                 # Play the random sequence of desired depth
-                                play_sequence(sequence_list, depth, qubit)
+                                play_sequence(sequence_list, depth, qubit, imperfection)
                         else:
-                            play_sequence(sequence_list, depth, qubit)
+                            play_sequence(sequence_list, depth, qubit, imperfection)
 
                     align()
 
