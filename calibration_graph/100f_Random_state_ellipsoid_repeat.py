@@ -79,8 +79,6 @@ else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
 num_qubits = len(qubits)
 
-#%% helper functions
-
 theta_range = np.arange(0,np.pi,1e-4)
 phi_range = np.arange(0,2*np.pi,1e-4)
 def theta_phi_list(n_points):
@@ -90,48 +88,6 @@ def theta_phi_list(n_points):
         theta_list.append(theta)
         phi_list.append(phi)
     return theta_list,phi_list
-
-# distance check
-def distance_eq(point):
-    x, y, z = point
-    return (x - x0)**2 + (y - y0)**2 + (z - z0)**2
-
-# condition function
-def constraint(point):
-    x, y, z = point
-    return param[0]*x*x+param[1]*y*y+param[2]*z*z+param[3]*x*y+param[4]*x*z+param[5]*y*z+param[6]*x+param[7]*y+param[8]*z+param[9]
-
-def angle_error_min(theoretical,actual):
-    error = (actual - theoretical + np.pi) % (2*np.pi) - np.pi  
-    return error  
-
-def data_thershold(data,n):
-    avg,std = data[0],data[1]
-    return avg+n*std,avg-n*std
-
-def average_to_counts(p,num):
-    N1 = p*num
-    N0 = (1-p)*num
-    return(np.array([N0,N1]))
-
-def conut_to_average(counts):
-    p = counts[1]/(counts[0]+counts[1])
-    return p
-#plotting
-def generate_bins_labels(bin_step=0.2, max_value=2*np.pi):
-    bin_width = bin_step * np.pi
-    bins = np.arange(0, max_value + bin_width, bin_width)
-    labels = [f'{bin_step * i:.1f}π' for i in range(len(bins))]
-    return bins, labels
-
-def plot_histogram(data, title, subplot_idx, bins, x_labels,ylim):
-    plt.subplot(subplot_idx)
-    plt.hist(data, bins=bins, edgecolor='black', alpha=0.7)
-    plt.title(title)
-    plt.ylabel('Count')
-    plt.ylim(0,ylim)
-    plt.xticks(bins, x_labels, rotation=45)
-
 # %% {QUA_program}
 n_runs = node.parameters.num_runs  # Number of runs
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
@@ -267,7 +223,7 @@ if not node.parameters.simulate:
     # first fit ellipsoid
     center, axes, R, volume, param = noise_analyzer.ellipsoid_fit()
     # compare the fitted ellipsoid with quadric form and find the best fit.
-    #axes, R = find_best_fit(center, axes, R, param)
+    axes, R = find_best_fit(center, axes, R, param)
 
     qm_analyze = QuantumMemory(axes,center,R)
     choi_state = qm_analyze.choi_state()
@@ -285,7 +241,7 @@ if not node.parameters.simulate:
         'volume': volume,
         'param': param,
         'choi state': choi,
-        'negativity': QuantumMemory.negativity(choi),
+        'negativity': QuantumMemory.negativity(choi)*2,
         'memory robustness': QuantumMemory.memory_robustness(choi)
         }
 
@@ -323,7 +279,7 @@ if not node.parameters.simulate:
         'volume': volume,
         'param': param,
         'choi state': choi,
-        'negativity': QuantumMemory.negativity(choi),
+        'negativity': QuantumMemory.negativity(choi)*2,
         'memory robustness': QuantumMemory.memory_robustness(choi)
         }
     #plot

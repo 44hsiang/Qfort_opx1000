@@ -23,22 +23,23 @@ from qiskit.result import CorrelatedReadoutMitigator
 from qiskit.visualization import plot_bloch_vector
 from qiskit.visualization.bloch import Bloch
 from numpy.linalg import norm
-
+from quam_libs.quantum_memory.marcos import *
+from quam_libs.quantum_memory.NoiseAnalyze import *
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ['q1']
+    qubits: Optional[List[str]] = ['q0']
     num_runs: int = 10000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-    load_data_id: Optional[int] = 2162
+    load_data_id: Optional[int] = None
     multiplexed: bool = False
     desired_state: Optional[List[List[float]]] = [[0,0],[np.pi,0],[np.pi/2,0],[np.pi/2,np.pi/2]]
-    operation_name: str = "y90"
+    operation_name: str = "id"
 
 #theta,phi = random_bloch_state_uniform()
 
@@ -80,7 +81,7 @@ reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "therma
 
 desired_state = node.parameters.desired_state
 theta,phi = np.pi,0
-t=4
+delay_time = 4
 operation_name = node.parameters.operation_name
 def QuantumMemory_program(qubit):
     with program() as QuantumMemory:
@@ -102,12 +103,10 @@ def QuantumMemory_program(qubit):
                         active_reset(qubit, "readout",max_attempts=15,wait_time=500)
                         qubit.align()
                         wait(10)
-                        #initial state |0>
-                        #
-                        qubit.xy.play(operation_name)
-                        #                        
+                        #initial state |0|
+                        if operation_name != "id": qubit.xy.play(operation_name)                   
                         qubit.align()
-                        wait(10)
+                        wait(delay_time)
                         #tomography pulses
                         with if_(tomo_axis == 0):
                             qubit.xy.play("y90")
@@ -128,10 +127,10 @@ def QuantumMemory_program(qubit):
                         qubit.align()
                         wait(10) 
                         #
-                        qubit.xy.play(operation_name)
+                        if operation_name != "id": qubit.xy.play(operation_name)                   
                         #
                         qubit.align() 
-                        wait(10)
+                        wait(delay_time)
                         #tomography pulses
                         with if_(tomo_axis == 0):
                             qubit.xy.play("y90")
@@ -154,10 +153,10 @@ def QuantumMemory_program(qubit):
                         qubit.align()
                         wait(10)
                         #
-                        qubit.xy.play(operation_name)
+                        if operation_name != "id": qubit.xy.play(operation_name)                   
                         #
                         qubit.align()
-                        wait(10)
+                        wait(delay_time)
                         #tomography pulses
                         with if_(tomo_axis == 0):
                             qubit.xy.play("y90")
@@ -179,10 +178,10 @@ def QuantumMemory_program(qubit):
                         qubit.align()
                         wait(10)
                         #
-                        qubit.xy.play(operation_name)
+                        if operation_name != "id": qubit.xy.play(operation_name)                   
                         #
                         qubit.align()
-                        wait(10)
+                        wait(delay_time)
                         #tomography pulses
                         with if_(tomo_axis == 0):
                             qubit.xy.play("y90")
@@ -240,7 +239,7 @@ if not node.parameters.simulate:
             #job_[0].result_handles.get('state1').fetch_all()
         extract_state = ds.state.values['value']
         ds = ds.assign_coords(axis=("axis", ['x', 'y', 'z']))
-        ds = ds.assign_coords(initial_state=("initial_state", ['|0>', '|1>', '|+>', 'i|+>']))
+        ds = ds.assign_coords(initial_state=("initial_state", ['0', '1', '+', 'i+']))
         ds['state'] = (["qubit","N",'initial_state', "axis"], extract_state)
     else:
         node = node.load_from_id(node.parameters.load_data_id)
@@ -252,209 +251,139 @@ if not node.parameters.simulate:
     data={}
     mitigate_data = {}
     print(f"ideal Bloch vector: {np.rad2deg(theta):.3} and {np.rad2deg(phi):.3} in degree")
+    data, mitigate_data = {}, {}
 
     for q in qubits:
-        data[q.name]={}
-        mitigate_data[q.name]={}
-        for i,initial_state in enumerate(ds.initial_state.values):
-            theta,phi = desired_state[i][0],desired_state[i][1]
-            ds_ = ds.sel(initial_state=initial_state) 
-            x, y, z = (
-                np.bincount(ds_.sel(qubit=q.name, axis='x').state.values).tolist(),
-                np.bincount(ds_.sel(qubit=q.name, axis='y').state.values).tolist(),
-                np.bincount(ds_.sel(qubit=q.name, axis='z').state.values).tolist(),
+        qn = q.name
+        data[qn] = {}
+        mitigate_data[qn] = {}
+
+        # Build the readout mitigator once per qubit
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=DeprecationWarning)
+            mitigator = CorrelatedReadoutMitigator(
+                assignment_matrix=np.array(q.resonator.confusion_matrix).T,
+                qubits=[0],
             )
-            Bloch_vector = [(1*x[0] - 1*x[1])/n_runs,(1*y[0] - 1*y[1])/n_runs,(1*z[0] - 1*z[1])/n_runs]
-            results = QuantumStateAnalysis(Bloch_vector,[theta,phi])
-            data[q.name][initial_state] = {
-                    'x':x,'y':y,'z':z,
-                    'Bloch vector':Bloch_vector,
-                    'denstiy matrix':results.density_matrix()[0],
-                    'fidelity':results.fidelity,
-                    'trace_distance':results.trace_distance
-                    }
-            #mitigate the data
-            import warnings
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", category=DeprecationWarning)
-                mitigator = CorrelatedReadoutMitigator(assignment_matrix=np.array(q.resonator.confusion_matrix).T,qubits=[0])
-            mitigate_data[q.name][initial_state]={}
-            for i in ['x','y','z']:
-                mitigated_quasi_probs = mitigator.quasi_probabilities({'0':data[q.name][initial_state][i][0],'1':data[q.name][initial_state][i][1]})
-                mitigated_probs = (mitigated_quasi_probs.nearest_probability_distribution().binary_probabilities())
-                mitigate_data[q.name][initial_state].update({i:mitigated_probs})
-            converted_data = {k: [v.get('0', 0), v.get('1', 0)] for k, v in mitigate_data[q.name][initial_state].items()}
-            x, y, z = (converted_data['x'],converted_data['y'],converted_data['z'])
-            m_Bloch_vector = [(1*x[0] - 1*x[1]),(1*y[0] - 1*y[1]),(1*z[0] - 1*z[1])]
-            
-            # construct denstiy matrix, fidelity and trace distance
-            m_results = QuantumStateAnalysis(m_Bloch_vector,[theta,phi])
-            m_Bloch_vector = [round(i,4) for i in m_Bloch_vector]
-            mitigate_data[q.name][initial_state]={
-                    'x':x,'y':y,'z':z,
-                    'Bloch vector':m_Bloch_vector,
-                    'denstiy matrix':m_results.density_matrix()[0],
-                    'fidelity':m_results.fidelity,
-                    'trace_distance':m_results.trace_distance
-                    }   
-            
-            print(q.name)
+        confusion_matrix = np.array(q.resonator.confusion_matrix).T
+        desired_state_name = ['0', '1', '+', 'i+']
+
+        # Create raw and mitigated results for each prepared initial state
+        for idx, initial_state in enumerate(ds.initial_state.values):
+            theta, phi = desired_state[idx]
+            ds_ = ds.sel(initial_state=initial_state)
+
+            # Raw counts (ensure both outcomes exist)
+            x_count = np.bincount(ds_.sel(qubit=qn, axis='x').state.values, minlength=2)
+            y_count = np.bincount(ds_.sel(qubit=qn, axis='y').state.values, minlength=2)
+            z_count = np.bincount(ds_.sel(qubit=qn, axis='z').state.values, minlength=2)
+
+            # Raw Bloch vector (from counts)
+            bloch = [
+                (x_count[0] - x_count[1]) / n_runs,
+                (y_count[0] - y_count[1]) / n_runs,
+                (z_count[0] - z_count[1]) / n_runs,
+            ]
+            res = QuantumStateAnalysis(bloch, [theta, phi])
+
+            data[qn][initial_state] = {
+                'Bloch vector': bloch,
+                'density matrix': res.density_matrix()[0],
+                'fidelity': res.fidelity,
+                'trace_distance': res.trace_distance,
+            }
+
+            # Mitigate the readout for each measurement axis
+            mit_axes = {}
+            new_px_0 = np.array([MLE([x_count[0]/n_runs,x_count[1]/n_runs],confusion_matrix)[0]])
+            new_py_0 = np.array([MLE([y_count[0]/n_runs,y_count[1]/n_runs],confusion_matrix)[0]])
+            new_pz_0 = np.array([MLE([z_count[0]/n_runs,z_count[1]/n_runs],confusion_matrix)[0]])
+
+            # Mitigated Bloch vector (already probabilities)
+            m_bloch = np.array([2*new_px_0-1,2*new_py_0-1,2*new_pz_0-1], dtype=float).ravel()
+            if np.linalg.norm(m_bloch) > 1:
+                m_bloch = m_bloch/np.linalg.norm(m_bloch)
+            m_res = QuantumStateAnalysis(m_bloch, [theta, phi])
+
+            mitigate_data[qn][initial_state] = {
+                'Bloch vector': m_bloch,
+                'density matrix': m_res.density_matrix()[0],
+                'fidelity': m_res.fidelity,
+                'trace_distance': m_res.trace_distance,
+            }
+
+            # Brief per-state summary
+            print(qn)
             print("raw (mitigate) data")
-            print(f"Bloch vector: [{Bloch_vector[0]}({m_Bloch_vector[0]}),{Bloch_vector[1]}({m_Bloch_vector[1]}),{Bloch_vector[2]}({m_Bloch_vector[2]})]")
-            print(f"theta, phi: {np.rad2deg(results.theta):.3} ({np.rad2deg(m_results.theta):.3}), {np.rad2deg(results.phi):.3} ({np.rad2deg(m_results.phi):.3})")
-            print(f"fidelity, trace distance: {results.fidelity:.3} ({m_results.fidelity:.3}), {results.trace_distance:.3} ({m_results.trace_distance:.3})")
-            mitigate_data[q.name]['Bloch vector'] = m_results.bloch_vector
-            mitigate_data[q.name]['fidelity'] = m_results.fidelity
-            mitigate_data[q.name]['trace_distance'] = m_results.trace_distance
-        desired_state_name = ['|0>', '|1>', '|+>', 'i|+>']
-        node.results["results"][q.name] = {
-            desired_state_name[i]:{
-                'raw':data[q.name][desired_state_name[i]],
-                'mitigated':mitigate_data[q.name][desired_state_name[i]],
-            } for i in range(len(desired_state_name))
+            print(f"Bloch vector: [{bloch[0]}({m_bloch[0]}), {bloch[1]}({m_bloch[1]}), {bloch[2]}({m_bloch[2]})]")
+            print(
+                f"theta, phi: {np.rad2deg(res.theta):.3} ({np.rad2deg(m_res.theta):.3}), "
+                f"{np.rad2deg(res.phi):.3} ({np.rad2deg(m_res.phi):.3})"
+            )
+            print(
+                f"fidelity, trace distance: {res.fidelity:.3} ({m_res.fidelity:.3}), "
+                f"{res.trace_distance:.3} ({m_res.trace_distance:.3})"
+            )
+
+        # Pack per-qubit results for convenience
+        node.results["results"][qn] = {
+            name: {
+                'raw': data[qn][name],
+                'mitigated': mitigate_data[qn][name],
+            } for name in desired_state_name
         }
-    # %% process tomography
 
-    def pauli_expansion_single_qubit(rho: np.ndarray) -> np.ndarray:
-        I = np.array([[1, 0], [0, 1]], dtype=complex)
-        X = np.array([[0, 1], [1, 0]], dtype=complex)
-        Y = np.array([[0, -1j], [1j,  0]], dtype=complex)
-        Z = np.array([[1, 0], [0, -1]], dtype=complex)
-        P = [I, X, Y, Z]
-        vec = []
-        for i in range(4):
-            coef = 1/2 * np.trace(rho @ P[i])
-            vec.append(coef)
-
-        return np.array(vec)
-
-    def build_superoperator(rho_in: any, rho_out: any) -> np.ndarray:
-        """
-        Constructs the 4x4 superoperator S such that:
-        vec(rho_out) = S @ vec(rho_in)
-
-        rho_out/rho_in: list of 4 density matrices in Puali basis (2x2)
-        """
-        # Vectorize all input and output states
-        R_in = np.column_stack([pauli_expansion_single_qubit(rho) for rho in rho_in])
-        R_out = np.column_stack([pauli_expansion_single_qubit(rho) for rho in rho_out])
-        # Solve S = R_out @ R_in^{-1}
-        try:
-            R_in_inv = np.linalg.inv(R_in)
-        except np.linalg.LinAlgError:
-            print("Warning: R_in is not invertible, using pseudo-inverse.")
-            R_in_inv = np.linalg.pinv(R_in)
-
-        S = R_out @ R_in_inv
-        return S
-    
-    def process_fidelity(superop, target='id'):
-        """
-        Compute process fidelity with respect to a target quantum process.
-        
-        Parameters:
-            superop: 4x4 numpy array (superoperator matrix in Pauli basis {I, X, Y, Z})
-            target: str, either 'id' or 'x' (currently supports 'id' and 'x')
-            
-        Returns:
-            fidelity (float): Process fidelity between the input superoperator and the target
-        """
-        # Normalize input superoperator
-        superop = superop / norm(superop, 'fro')
-        
-        # Define target superoperator
-        if target == 'id':
-            target_superop = np.eye(4, dtype=complex)
-        elif target == 'x180':
-            target_superop = np.array([
-                [1, 0, 0, 0],
-                [0, 1, 0, 0],
-                [0, 0, -1, 0],
-                [0, 0, 0, -1]
-            ], dtype=complex)
-        elif target == 'y180':
-            target_superop = np.array([
-                [1, 0, 0, 0],
-                [0, -1, 0, 0],
-                [0, 0, 1, 0],
-                [0, 0, 0, -1]
-            ], dtype=complex)        
-        elif target == 'x90':
-            target_superop = np.array([
-                [1, 0, 0, 0],
-                [0, 1, 0, 0],
-                [0, 0, 0, -1],
-                [0, 0, 1, 0]
-            ], dtype=complex)
-        elif target == 'y90':
-            target_superop = np.array([
-                [1, 0, 0, 0],
-                [0, 0, 0, -1],
-                [0, 0, 1, 0],
-                [0, 1, 0, 0]
-            ], dtype=complex)
-        
-        else:
-            raise ValueError("Unsupported target process. Use 'id', 'x180', 'y180','x90', or 'y90'")
-        
-        target_superop = target_superop / norm(target_superop, 'fro')
-        
-        # Compute inner product (Hilbert-Schmidt)
-        fidelity = np.abs(np.trace(np.conj(superop.T) @ target_superop))
-        return fidelity
-
-    # === Example ===
-    # You can replace these with your own density matrices
-
-    # Input density matrices
-    rho_0 = np.array([[1, 0], [0, 0]])  # |0><0|
-    rho_1 = np.array([[0, 0], [0, 1]])  # |1><1|
-    rho_plus = 0.5 * np.array([[1, 1], [1, 1]])  # |+><+|
-    rho_plus_i = 0.5 * np.array([[1, -1j], [1j, 1]])  # |+i><+i|
-    for q in qubits:
-        # Output density matrices (replace these with your actual measurements)
-        rho_out_0 = data[q.name]['|0>']['denstiy matrix']
-        rho_out_1 = data[q.name]['|1>']['denstiy matrix']
-        rho_out_plus = data[q.name]['|+>']['denstiy matrix']
-        rho_out_plus_i = data[q.name]['i|+>']['denstiy matrix']
-
-        # Pack them into lists
+        # Build superoperators (raw and mitigated) for this qubit
         inputs = [rho_0, rho_1, rho_plus, rho_plus_i]
-        outputs = [rho_out_0, rho_out_1, rho_out_plus, rho_out_plus_i]
+        outputs_raw = [
+            data[qn]['0']['density matrix'],
+            data[qn]['1']['density matrix'],
+            data[qn]['+']['density matrix'],
+            data[qn]['i+']['density matrix'],
+        ]
+        outputs_mit = [
+            mitigate_data[qn]['0']['density matrix'],
+            mitigate_data[qn]['1']['density matrix'],
+            mitigate_data[qn]['+']['density matrix'],
+            mitigate_data[qn]['i+']['density matrix'],
+        ]
 
-        # Construct superoperator
-        superoperator = build_superoperator(inputs, outputs)
+        ptm, m_ptm = build_pauli_transfer_matrix(inputs, outputs_raw), build_pauli_transfer_matrix(inputs, outputs_mit)
+        superop, m_superop = ptm_to_superop(ptm), ptm_to_superop(m_ptm)
+        choi, m_choi = superop_to_choi(superop, 2, 2)/2, superop_to_choi(m_superoperator, 2, 2)/2
+        
 
-        # Display result
+
+        # Display result summaries
         np.set_printoptions(precision=3, suppress=True)
         print(f"operation name: {operation_name}")
-        print("Superoperator (4x4 matrix):")
-        print(superoperator)
-
-        rho_out_0 = mitigate_data[q.name]['|0>']['denstiy matrix']
-        rho_out_1 = mitigate_data[q.name]['|1>']['denstiy matrix']
-        rho_out_plus = mitigate_data[q.name]['|+>']['denstiy matrix']
-        rho_out_plus_i = mitigate_data[q.name]['i|+>']['denstiy matrix']
-
-        # Pack them into lists
-        inputs = [rho_0, rho_1, rho_plus, rho_plus_i]
-        outputs = [rho_out_0, rho_out_1, rho_out_plus, rho_out_plus_i]
-
-        # Construct superoperator
-        m_superoperator = build_superoperator(inputs, outputs)
-
-        # Display result
-        np.set_printoptions(precision=3, suppress=True)
-        print("Mitigation Superoperator (4x4 matrix):")
-        print(m_superoperator)
-
         print("Process fidelity with respect to the target process:")
-        print(f"raw: {process_fidelity(superoperator, target=operation_name):.3}")
-        print(f"mitigated: {process_fidelity(m_superoperator, target=operation_name):.3}")
-    node.results["results"][q.name]['superoperator'] = superoperator
-    node.results["results"][q.name]['mitigated superoperator'] = m_superoperator
+        print(f"raw: {process_fidelity(ptm, target=operation_name):.3}")
+        print(f"mitigated: {process_fidelity(m_ptm, target=operation_name):.3}")
+
+        # Save to results
+        node.results["results"][qn]['quantum information'] = {
+            'raw': {
+                'ptm': ptm,
+                'superoperator':superop,
+                'choi': choi,
+                'negativity':QuantumMemory.negativity(choi)*2,
+                'Quantum Memory Robustness': QuantumMemory.memory_robustness(choi),
+                'fidelity': process_fidelity(ptm, target=operation_name),
+            },
+            'mitigated': {
+                'ptm': m_ptm,
+                'superoperator': m_superop,
+                'choi': m_choi,
+                'negativity': QuantumMemory.negativity(m_choi)*2,
+                'Quantum Memory Robustness': QuantumMemory.memory_robustness(m_choi),
+                'fidelity': process_fidelity(m_ptm, target=operation_name),
+            },
+        }
 
 
+ 
     # %% {Plotting}
     for i,initial_state in enumerate(ds.initial_state.values):
         grid = QubitGrid(ds, [q.grid_location for q in qubits],is_3d=True)
@@ -473,7 +402,7 @@ if not node.parameters.simulate:
             bloch.vector_color = ['r','b','g']
             bloch.vector_labels = ['raw','mitigated','ideal']
             bloch.render(title=qubit['qubit']+'_'+initial_state)
-        node.results["figs"][qubit['qubit']+'_'+initial_state] = grid.fig
+        node.results[f"figs_{qubit['qubit']+'_'+initial_state}"] = grid.fig
     # %% {Update_state}
     if node.parameters.reset_type_thermal_or_active == "active":
         for i,j in zip(machine.active_qubit_names,"abcde"):
@@ -488,37 +417,3 @@ if not node.parameters.simulate:
     node.save()
     
 # %%
-
-def pauli_expansion_single_qubit(rho: np.ndarray) -> np.ndarray:
-    I = np.array([[1, 0], [0, 1]], dtype=complex)
-    X = np.array([[0, 1], [1, 0]], dtype=complex)
-    Y = np.array([[0, -1j], [1j,  0]], dtype=complex)
-    Z = np.array([[1, 0], [0, -1]], dtype=complex)
-    P = [I, X, Y, Z]
-    vec = []
-    for i in range(4):
-        coef = 1/2 * np.trace(rho @ P[i])
-        vec.append(coef)
-
-    return np.array(vec)
-
-def build_superoperator(rho_in: any, rho_out: any) -> np.ndarray:
-    """
-    Constructs the 4x4 superoperator S such that:
-    vec(rho_out) = S @ vec(rho_in)
-
-    rho_out/rho_in: list of 4 density matrices in Puali basis (2x2)
-    """
-    # Vectorize all input and output states
-    R_in = np.column_stack([pauli_expansion_single_qubit(rho) for rho in rho_in])
-    R_out = np.column_stack([pauli_expansion_single_qubit(rho) for rho in rho_out])
-    # Solve S = R_out @ R_in^{-1}
-    try:
-        R_in_inv = np.linalg.inv(R_in)
-    except np.linalg.LinAlgError:
-        print("Warning: R_in is not invertible, using pseudo-inverse.")
-        R_in_inv = np.linalg.pinv(R_in)
-
-    S = R_out @ R_in_inv
-    return S
-
