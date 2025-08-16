@@ -184,7 +184,7 @@ def QuantumMemory_program(qubit):
                         wait(delay_time)
                         #tomography pulses
                         with if_(tomo_axis == 0):
-                            qubit.xy.play("y90")
+                            qubit.xy.play("-y90")
                         with elif_(tomo_axis == 1):
                             qubit.xy.play("x90")
                         align()
@@ -351,7 +351,7 @@ if not node.parameters.simulate:
 
         ptm, m_ptm = build_pauli_transfer_matrix(inputs, outputs_raw), build_pauli_transfer_matrix(inputs, outputs_mit)
         superop, m_superop = ptm_to_superop(ptm), ptm_to_superop(m_ptm)
-        choi, m_choi = superop_to_choi(superop, 2, 2)/2, superop_to_choi(m_superoperator, 2, 2)/2
+        choi, m_choi = superop_to_choi(superop, 2, 2)/2, superop_to_choi(m_superop, 2, 2)/2
         
 
 
