@@ -11,13 +11,13 @@
 *.toml
 *.lock
 .python-version
-.egg-info
 
 debug.py
 main.py
-state_tomo_miti/rotation_test.py
 
+.idea/
 build/
 data/
 QPT/
-state_tomo_miti/
+quam_libs.egg-info/
+OtherCodes/

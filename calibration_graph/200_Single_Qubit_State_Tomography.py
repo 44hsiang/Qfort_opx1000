@@ -26,10 +26,10 @@ import xarray as xr
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ["q3"]
+    qubits: Optional[List[str]] = ["q1"]
     num_averages: int = 10000
     operation: Optional[Literal["y180", "x90", "y90", "-x90","-y90"]] = "y90"
-    delay: List[int] = list(range(4, 301, 1))  # delay time must be larger than 4
+    delay: List[int] = list(range(4, 9, 1))  # delay time must be larger than 4
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     mitigation: bool = True

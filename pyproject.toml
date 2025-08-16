@@ -8,11 +8,15 @@ authors = [
 ]
 requires-python = ">=3.10"
 dependencies = [
+    "cvxopt>=1.3.2",
     "cvxpy>=1.6.6",
+    "ipympl>=0.9.7",
     "jupyter>=1.1.1",
     "lmfit>=1.3.3",
+    "mosek>=11.0.27",
     "notebook==7.5.0a0",
     "pennylane>=0.41.1",
+    "picos>=2.6.1",
     "qiskit==1.4.2",
     "qiskit-experiments>=0.10.0",
     "qm-qua==1.2.2a4",

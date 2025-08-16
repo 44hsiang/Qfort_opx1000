@@ -43,7 +43,7 @@ import xarray as xr
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ["q2"]
+    qubits: Optional[List[str]] = ["q0"]
     num_averages: int = 200
     num_runs: int = 10000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"

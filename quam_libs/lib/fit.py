@@ -17,7 +17,6 @@ def fix_initial_value(x, da):
     else:
         return x
 
-
 def decay_exp(t, a, offset, decay, **kwargs):
     return a * np.exp(t * decay) + offset
 
@@ -85,6 +84,11 @@ def fit_decay_exp(da, dim):
             ],
         )
     )
+
+
+
+def decay_exp_log(t, a, offset, decay, **kwargs):
+    return a * np.exp(t * decay) + offset
 
 
 def oscillation_decay_exp(t, a, f, phi, offset, decay):

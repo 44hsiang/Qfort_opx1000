@@ -53,15 +53,15 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ['q1_q2']
-    num_averages: int = 200
+    qubit_pairs: Optional[List[str]] = ['q0_q2']
+    num_averages: int = 50
     max_time_in_ns: int = 100
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
     simulate: bool = False
     timeout: int = 100
     amp_range : float = 0.4
-    amp_step : float = 0.002
+    amp_step : float = 0.001
     load_data_id: Optional[int] = None  
 
 node = QualibrationNode(
@@ -144,7 +144,7 @@ for qp in qubit_pairs:
     elif qp.name[-2:] == 'q4':
         pulse_amplitudes[qp.name] *= 2
 # Loop parameters
-amplitudes = pulse_amplitudes[qp.name] / qp.qubit_control.z.operations['const'].amplitude*np.arange(1-node.parameters.amp_range, 1+node.parameters.amp_range, node.parameters.amp_step)
+amplitudes = np.arange(1-node.parameters.amp_range, 1+node.parameters.amp_range, node.parameters.amp_step)
 times_cycles = np.arange(0, node.parameters.max_time_in_ns // 4)
 
 with program() as CPhase_Oscillations:
@@ -185,7 +185,7 @@ with program() as CPhase_Oscillations:
                         wait(qp.qubit_control.thermalization_time * u.ns)
                     # set both qubits to the excited state
                     for state,qubit in zip([state_control, state_target], [qp.qubit_control, qp.qubit_target]):
-                        qubit.xy.play("x180")
+                        qubit.xy.play("y180")
                         qubit.xy.wait(5)
                     qp.align()
 
@@ -334,10 +334,11 @@ if not node.parameters.simulate:
             return -1e-6 * (flux/1e3)**2 * quad
         
         ax2 = ax.secondary_yaxis('right', functions=(detuning_to_flux, flux_to_detuning))
-        ax2.set_ylabel('Flux amplitude [V]')
+        ax2.set_ylabel('Flux amplitude [mV]')
         ax.set_ylabel('Detuning [MHz]')
         
     plt.suptitle('control qubit state')
+    plt.tight_layout()
     plt.show()
     node.results["figure_control"] = grid.fig
     
@@ -369,6 +370,7 @@ if not node.parameters.simulate:
         
         
     plt.suptitle('target qubit state')
+    plt.tight_layout()
     plt.show()
     node.results["figure_target"] = grid.fig
 

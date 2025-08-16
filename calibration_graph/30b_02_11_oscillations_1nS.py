@@ -53,7 +53,7 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ['q1_q2']
+    qubit_pairs: Optional[List[str]] = ['q0_q2']
     num_averages: int = 100
     max_time_in_ns: int = 100
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
@@ -61,10 +61,10 @@ class Parameters(NodeParameters):
     simulate: bool = False
     timeout: int = 100
     method: Literal['coarse', 'fine'] = "fine"
-    amp_range_coarse : float = 0.2
+    amp_range_coarse : float = 0.4
     amp_step_coarse : float = 0.004
-    amp_range_fine : float = 0.15
-    amp_step_fine : float = 0.002
+    amp_range_fine : float = 0.4
+    amp_step_fine : float = 0.001
     load_data_id: Optional[int] = None
 
 node = QualibrationNode(
@@ -171,7 +171,7 @@ baked_signals = {qp.name : baked_waveform(pulse_amplitudes[qp.name], qp.qubit_co
 if node.parameters.method == "coarse":
     amplitudes = np.arange(1-node.parameters.amp_range_coarse, 1+node.parameters.amp_range_coarse, node.parameters.amp_step_coarse)
 else:
-    amplitudes = np.arange(1-node.parameters.amp_range_fine, 1+node.parameters.amp_range_fine, node.parameters.amp_step_fine)
+    amplitudes = pulse_amplitudes[qp.name] * np.arange(1-node.parameters.amp_range_fine, 1+node.parameters.amp_range_fine, node.parameters.amp_step_fine)
 times_ns = np.arange(0, node.parameters.max_time_in_ns)
 
 # %%
