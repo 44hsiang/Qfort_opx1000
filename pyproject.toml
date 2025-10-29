@@ -19,9 +19,9 @@ dependencies = [
     "picos>=2.6.1",
     "qiskit==1.4.2",
     "qiskit-experiments>=0.10.0",
-    "qm-qua==1.2.2a4",
+    "qm-qua>=1.2.3",
     "qualang-tools>=0.18.0",
-    "qualibrate==0.2.0",
+    "qualibrate>=0.2.0",
     "quam",
     "qutip>=5.2.0",
     "rsinstrument>=1.102.0",
@@ -35,7 +35,7 @@ prerelease = "allow"
 
 [tool.uv.sources]
 quam_libs = { path = "./", editable = true }
-quam = { git = "https://github.com/qua-platform/quam.git", tag = "v0.4.0" }
+quam = { git = "https://github.com/qua-platform/quam.git", tag = "v0.4.1" }
 
 [dependency-groups]
 dev = [
