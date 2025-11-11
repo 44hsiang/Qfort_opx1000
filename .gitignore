@@ -7,3 +7,5 @@
 debug.py
 
 data/
+
+__pycache__/
