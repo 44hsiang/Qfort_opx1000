@@ -85,7 +85,7 @@
                 "operations": {
                     "readout": {
                         "length": 2000,
-                        "amplitude": 0.08912509381337455,
+                        "amplitude": 0.04912509381337455,
                         "threshold": 0.0,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     }
@@ -198,7 +198,7 @@
                 "operations": {
                     "readout": {
                         "length": 2000,
-                        "amplitude": 0.08912509381337455,
+                        "amplitude": 0.03912509381337455,
                         "threshold": 0.0,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
                     }
@@ -307,7 +307,7 @@
             },
             "resonator": {
                 "depletion_time": 1000,
-                "f_01": 7511200000.0,
+                "f_01": 7511400000.0,
                 "operations": {
                     "readout": {
                         "length": 2000,
@@ -318,7 +318,7 @@
                 },
                 "opx_input": "#/wiring/qubits/q2/rr/opx_input",
                 "time_of_flight": 364,
-                "RF_frequency": 7511200000.0,
+                "RF_frequency": 7511400000.0,
                 "opx_output": "#/wiring/qubits/q2/rr/opx_output",
                 "__class__": "quam_builder.architecture.superconducting.components.readout_resonator.ReadoutResonatorMW"
             },
@@ -420,7 +420,7 @@
             },
             "resonator": {
                 "depletion_time": 1000,
-                "f_01": 7677600000.0,
+                "f_01": 7678200000.0,
                 "operations": {
                     "readout": {
                         "length": 2000,
@@ -431,7 +431,7 @@
                 },
                 "opx_input": "#/wiring/qubits/q3/rr/opx_input",
                 "time_of_flight": 364,
-                "RF_frequency": 7677600000.0,
+                "RF_frequency": 7678200000.0,
                 "opx_output": "#/wiring/qubits/q3/rr/opx_output",
                 "__class__": "quam_builder.architecture.superconducting.components.readout_resonator.ReadoutResonatorMW"
             },
@@ -533,7 +533,7 @@
             },
             "resonator": {
                 "depletion_time": 1000,
-                "f_01": 7899900000.0,
+                "f_01": 7900500000.0,
                 "operations": {
                     "readout": {
                         "length": 2000,
@@ -544,7 +544,7 @@
                 },
                 "opx_input": "#/wiring/qubits/q4/rr/opx_input",
                 "time_of_flight": 364,
-                "RF_frequency": 7899900000.0,
+                "RF_frequency": 7900500000.0,
                 "opx_output": "#/wiring/qubits/q4/rr/opx_output",
                 "__class__": "quam_builder.architecture.superconducting.components.readout_resonator.ReadoutResonatorMW"
             },
@@ -725,7 +725,7 @@
                         "port_id": 1,
                         "band": 3,
                         "upconverter_frequency": 7550000000,
-                        "full_scale_power_dbm": 16,
+                        "full_scale_power_dbm": -8,
                         "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
                     },
                     "2": {
@@ -734,7 +734,7 @@
                         "port_id": 2,
                         "band": 2,
                         "upconverter_frequency": 4560000000.0,
-                        "full_scale_power_dbm": 4,
+                        "full_scale_power_dbm": -5,
                         "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
                     },
                     "3": {
@@ -743,7 +743,7 @@
                         "port_id": 3,
                         "band": 2,
                         "upconverter_frequency": 4710000000.0,
-                        "full_scale_power_dbm": 4,
+                        "full_scale_power_dbm": -5,
                         "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
                     },
                     "4": {
@@ -752,7 +752,7 @@
                         "port_id": 4,
                         "band": 2,
                         "upconverter_frequency": 4980000000.0,
-                        "full_scale_power_dbm": 4,
+                        "full_scale_power_dbm": -5,
                         "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
                     },
                     "5": {
@@ -761,7 +761,7 @@
                         "port_id": 5,
                         "band": 2,
                         "upconverter_frequency": 5690000000.0,
-                        "full_scale_power_dbm": 4,
+                        "full_scale_power_dbm": -5,
                         "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
                     },
                     "6": {
@@ -770,7 +770,7 @@
                         "port_id": 6,
                         "band": 2,
                         "upconverter_frequency": 5660000000.0,
-                        "full_scale_power_dbm": 4,
+                        "full_scale_power_dbm": -5,
                         "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
                     }
                 }

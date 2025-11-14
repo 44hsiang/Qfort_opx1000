@@ -132,7 +132,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         # Flux sweeping by tuning the OPX dc offset associated with the flux_line element
                         qubit.z.set_dc_offset(dc)
                         qubit.z.settle()
-                        qubit.align()
+                        #qubit.align()
+                        align(qubit.z.name,qubit.xy.name)
                         with for_(*from_array(df, dfs)):
                             # Update the resonator frequencies for resonator
                             rr.update_frequency(df + rr.intermediate_frequency)
