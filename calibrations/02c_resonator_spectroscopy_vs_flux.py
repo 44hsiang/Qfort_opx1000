@@ -133,7 +133,7 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
                         qubit.z.set_dc_offset(dc)
                         qubit.z.settle()
                         #qubit.align()
-                        align(qubit.z.name,qubit.xy.name)
+                        align(qubit.z.name, qubit.resonator.name)
                         with for_(*from_array(df, dfs)):
                             # Update the resonator frequencies for resonator
                             rr.update_frequency(df + rr.intermediate_frequency)

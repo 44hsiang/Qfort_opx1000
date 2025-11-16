@@ -12,8 +12,8 @@ class NodeSpecificParameters(RunnableParameters):
     """Maximum flux bias offset in volts. Default is 0.5 V."""
     num_flux_points: int = 101
     """Number of flux points. Default is 101."""
-    frequency_span_in_mhz: float = 15
-    """Frequency span in MHz. Default is 15 MHz."""
+    frequency_span_in_mhz: float = 10
+    """Frequency span in MHz. Default is 10 MHz."""
     frequency_step_in_mhz: float = 0.1
     """Frequency step in MHz. Default is 0.1 MHz."""
     input_line_impedance_in_ohm: float = 50
