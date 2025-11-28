@@ -67,7 +67,6 @@ def custom_param(node: QualibrationNode[Parameters, Quam]):
     """Allow the user to locally set the node parameters for debugging purposes, or execution in the Python IDE."""
     # You can get type hinting in your IDE by typing node.parameters.
     # node.parameters.qubits = ["q1", "q2"]
-    node.parameters.initialize_qpu = False
     pass
 
 
@@ -119,9 +118,8 @@ def create_qua_program(node: QualibrationNode[Parameters, Quam]):
 
         for multiplexed_qubits in qubits.batch():
             # Initialize the QPU in terms of flux points (flux tunable transmons and/or tunable couplers)
-            if node.parameters.initialize_qpu:
-                for qubit in multiplexed_qubits.values():
-                    node.machine.initialize_qpu(target=qubit, flux_point=qubit.z.flux_point)
+            for qubit in multiplexed_qubits.values():
+                node.machine.initialize_qpu(target=qubit, flux_point=qubit.z.flux_point)
             align()
 
             with for_(n, 0, n < n_avg, n + 1):
