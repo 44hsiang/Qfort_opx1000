@@ -83,7 +83,7 @@
             },
             "resonator": {
                 "depletion_time": 1000,
-                "f_01": 7251200000.0,
+                "f_01": 7251000000.0,
                 "confusion_matrix": [
                     [
                         0.601,
@@ -107,7 +107,7 @@
                 "core": "a",
                 "opx_input": "#/wiring/qubits/q0/rr/opx_input",
                 "time_of_flight": 364,
-                "RF_frequency": 7251200000.0,
+                "RF_frequency": 7251000000.0,
                 "opx_output": "#/wiring/qubits/q0/rr/opx_output",
                 "__class__": "quam_builder.architecture.superconducting.components.readout_resonator.ReadoutResonatorMW"
             },
@@ -361,7 +361,7 @@
             },
             "resonator": {
                 "depletion_time": 1000,
-                "f_01": 7513100000.0,
+                "f_01": 7513000000.0,
                 "confusion_matrix": [
                     [
                         0.6445,
@@ -385,7 +385,7 @@
                 "core": "c",
                 "opx_input": "#/wiring/qubits/q2/rr/opx_input",
                 "time_of_flight": 364,
-                "RF_frequency": 7513100000.0,
+                "RF_frequency": 7513000000.0,
                 "opx_output": "#/wiring/qubits/q2/rr/opx_output",
                 "__class__": "quam_builder.architecture.superconducting.components.readout_resonator.ReadoutResonatorMW"
             },
@@ -500,7 +500,7 @@
             },
             "resonator": {
                 "depletion_time": 1000,
-                "f_01": 7678700000.0,
+                "f_01": 7678500000.0,
                 "confusion_matrix": [
                     [
                         0.548,
@@ -524,7 +524,7 @@
                 "core": "d",
                 "opx_input": "#/wiring/qubits/q3/rr/opx_input",
                 "time_of_flight": 364,
-                "RF_frequency": 7678700000.0,
+                "RF_frequency": 7678500000.0,
                 "opx_output": "#/wiring/qubits/q3/rr/opx_output",
                 "__class__": "quam_builder.architecture.superconducting.components.readout_resonator.ReadoutResonatorMW"
             },
@@ -639,7 +639,7 @@
             },
             "resonator": {
                 "depletion_time": 1000,
-                "f_01": 7901000000.0,
+                "f_01": 7901100000.0,
                 "confusion_matrix": [
                     [
                         0.7175,
@@ -663,7 +663,7 @@
                 "core": "e",
                 "opx_input": "#/wiring/qubits/q4/rr/opx_input",
                 "time_of_flight": 364,
-                "RF_frequency": 7901000000.0,
+                "RF_frequency": 7901100000.0,
                 "opx_output": "#/wiring/qubits/q4/rr/opx_output",
                 "__class__": "quam_builder.architecture.superconducting.components.readout_resonator.ReadoutResonatorMW"
             },
