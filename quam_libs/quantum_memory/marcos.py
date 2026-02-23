@@ -16,13 +16,15 @@ from matplotlib.axes import Axes
 from PIL import Image
 import itertools
 
+from pathlib import Path
+data_path = Path("/Users/jackchao/Desktop/Project/Phd_thesis/CH5_5GZdemonstration/data")
 
 # fitting tool
 def T1(node,index):
     T1=[]
     std = []
     for i in index:
-        node_qm = node.load_from_id(i)
+        node_qm = node.load_from_id(i,base_path=data_path)
         ds = node_qm.results['ds']
         fit_data = fit_decay_exp(ds.state, "idle_time")
         fit_data.attrs = {"long_name": "time", "units": "µs"}
@@ -47,11 +49,12 @@ def T1(node,index):
         std.append(tau_error.values)
     return np.array(T1).reshape(-1), np.array(std).reshape(-1)
 
+
 def T2(node,index):
     val= []
     std = []
     for i in index:
-        node_qm = node.load_from_id(i)
+        node_qm = node.load_from_id(i,base_path = data_path)
         val.append(node_qm.results['fit_results']['q0']['decay'])
         std.append(node_qm.results['fit_results']['q0']['decay_error'])
     return np.array(val).reshape(-1), np.array(std).reshape(-1)

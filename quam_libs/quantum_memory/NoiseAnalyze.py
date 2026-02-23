@@ -9,11 +9,22 @@ from quam_libs.quantum_memory.CorrectBloch import CorrectBlochSphere,CorrectChoi
 from quam_libs.quantum_memory.entanglement_robustness import entanglementRobustness
 #matplotlib.use('TkAgg')
 
+from dataclasses import dataclass
+@dataclass
+class EllipsoidFitParameter:
+    filter_method: str = 'ransac'
+    convex: bool = True
+    ransac_threshold: float = 0.05
+    ransac_iterations: int = 1000
+
+ellipsoid_fit_parameters = EllipsoidFitParameter()
+
 class NoiseAnalyze:
     
-    def __init__(self, measurement_data, ideal_data):
+    def __init__(self, measurement_data, ideal_data, ellipsoid_fit_parameters):
         self.measurement_data = measurement_data
         self.ideal_data = ideal_data
+        self.ellipsoid_fit_parameters = ellipsoid_fit_parameters
         self.corrected_dm, self.corrected_bloch = self.valid_data()
     
     def valid_data(self,method="manual"):
@@ -31,17 +42,17 @@ class NoiseAnalyze:
         corrected_dm, corrected_bloch = corrector.project_to_cptp(method=method)
         return corrected_dm, corrected_bloch
 
-    def ellipsoid_fit(self,do_convex=True):
+    def ellipsoid_fit(self,do_convex=False):
         """
         Fit the ellipsoid from input data(Bloch vector)
         """
-        return EllipsoidTool(self.corrected_bloch,convex=do_convex).fit()
+        return EllipsoidTool(self.corrected_bloch,convex=self.ellipsoid_fit_parameters.convex,filter_method=self.ellipsoid_fit_parameters.filter_method,ransac_threshold=self.ellipsoid_fit_parameters.ransac_threshold,ransac_iterations=self.ellipsoid_fit_parameters.ransac_iterations).fit()
 
     def ellipsoid_plot(self, ax=None,title=None,do_convex=True):
         """
         Plot the ellipsoid
         """   
-        return EllipsoidTool(self.corrected_bloch,convex=do_convex).plot(ax=ax,title=title)
+        return EllipsoidTool(self.corrected_bloch,convex=do_convex,filter_method='ransac').plot(ax=ax,title=title)
 
 
 

@@ -213,3 +213,4 @@ def active_reset(
     qubit.align()
     if save_qua_var is not None:
         save(attempts, save_qua_var)
+

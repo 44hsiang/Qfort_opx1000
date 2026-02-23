@@ -1,4 +1,3 @@
-#我沒有設計錯誤檢查 自己處理
 import sys
 from qutip import Qobj
 from picos import Problem, value
@@ -50,7 +49,6 @@ if __name__ == "__main__":
     import numpy as np
 
 
-    # 這裡假設你有一個 4x4 的 Choi matrix
     choi_matrix = np.array([
         [0.5, 0, 0, 0.5],
         [0, 0, 0, 0],
