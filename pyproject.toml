@@ -20,7 +20,7 @@ xarray = "*"
 lmfit = "*"
 qiskit-experiments = "*"
 tqdm = "*"
-qualibrate = "*"
+qualibrate = "0.2.2"
 qm-qua = "1.2.3"
 
 [build-system]

@@ -53,8 +53,8 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ['q0_q2','q1_q2']
-    num_averages: int = 50
+    qubit_pairs: Optional[List[str]] = ['q0_q2']
+    num_averages: int = 30
     max_time_in_ns: int = 100
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
@@ -63,8 +63,8 @@ class Parameters(NodeParameters):
     method: Literal['coarse', 'fine'] = "fine"
     amp_range_coarse : float = 0.5
     amp_step_coarse : float = 0.005
-    amp_range_fine : float = 0.15
-    amp_step_fine : float = 0.002
+    amp_range_fine : float = 0.30
+    amp_step_fine : float = 0.004
     #load_data_id: Optional[int] = 1620  
     load_data_id: Optional[int] = None
 node = QualibrationNode(
@@ -234,7 +234,7 @@ with program() as CPhase_Oscillations:
                     qp.align()
                     
                     # measure both qubits
-                    readout_state_gef(qp.qubit_control, state_control[i])
+                    readout_state(qp.qubit_control, state_control[i])
                     readout_state(qp.qubit_target, state_target[i])
                     save(state_control[i], state_st_control[i])
                     save(state_target[i], state_st_target[i])
