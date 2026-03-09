@@ -36,7 +36,7 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ["q0"]
     num_averages: int = 200
     frequency_span_in_mhz: float = 15.0
     frequency_step_in_mhz: float = 0.05

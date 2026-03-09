@@ -40,7 +40,7 @@ import xarray as xr
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ["q0"]
     num_averages: int = 5000
     operation: str = "x180"
     min_amp_factor: float = -2

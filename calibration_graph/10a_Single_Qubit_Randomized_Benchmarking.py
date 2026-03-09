@@ -42,7 +42,6 @@ import xarray as xr
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
-    qubits: Optional[List[str]] = None
     use_state_discrimination: bool = True
     use_strict_timing: bool = False
     num_random_sequences: int = 2000  # Number of random sequences

@@ -38,13 +38,13 @@ import numpy as np
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = None
-    num_averages: int = 30
+    qubits: Optional[List[str]] = ["q0"]
+    num_averages: int = 200
     operation: str = "x180"
     min_amp_factor: float = -1.5
     max_amp_factor: float = 1.5
     amp_factor_step: float = 0.02
-    max_number_pulses_per_sweep: int = 50
+    max_number_pulses_per_sweep: int = 30
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     simulate: bool = False
@@ -63,8 +63,7 @@ node = QualibrationNode(name="09b_DRAG_Calibration_180_minus_180", parameters=Pa
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
-machine = QuAM.load(path)
+machine = QuAM.load()
 operation = node.parameters.operation  # The qubit operation to play
 
 if node.parameters.qubits is None or node.parameters.qubits == "":

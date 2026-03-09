@@ -46,10 +46,10 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ["q0"]
     num_averages: int = 200
     operation: str = "saturation"
-    operation_amplitude_factor: Optional[float] = 0.2
+    operation_amplitude_factor: Optional[float] = 0.02
     operation_len_in_ns: Optional[int] = None
     frequency_span_in_mhz: float = 100
     frequency_step_in_mhz: float = 0.1
