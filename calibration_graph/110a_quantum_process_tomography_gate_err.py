@@ -177,7 +177,7 @@ def QuantumMemory_program(qubit):
                         qubit.align()
                         #initial state i|+>
                         qubit.xy.play("-x90", amplitude_scale=alpha)
-                        #qubit.xy.frame_rotation_2pi((np.pi/2-qubit.extras["phi_offset"])/np.pi/2-0.5)                        #
+                        #qubit.xy.frame_rotation_2pi((np.pi/2-qubit.extras["phi_offset"])/np.pi/2-0.5)
                         qubit.align()
                         wait(10)
                         #

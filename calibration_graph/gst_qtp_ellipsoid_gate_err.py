@@ -26,11 +26,18 @@ def generate_nodes(alpha_list):
         )
     }
     connectivity = []
-    for depth in range(1, 4):
+    for method in range(1):
         for i, a in enumerate(alpha_list):
-            if depth == 1:
-                if i < 8:
-                    continue
+            if method == 0:
+                name = f"quantum_process_tomo_{i:03d}"
+                nodes[name] = library.nodes["110a_quantum_process_tomography_gate_err"].copy(
+                    name=name,
+                    qubits = qubits,
+                    alpha = round(a, 2),
+                    reset_type_thermal_or_active=reset_type_thermal_or_active,
+                    load_data_id = None
+                )
+            elif method == 1:
                 name = f"ellipsoid_{i:03d}"
                 nodes[name] = library.nodes["100i_Random_state_ellipsoid_gate_err"].copy(
                     name=name,
@@ -38,15 +45,6 @@ def generate_nodes(alpha_list):
                     alpha = round(a, 2),
                     reset_type_thermal_or_active=reset_type_thermal_or_active,
                     load_data_id = None
-                )
-            else:
-                name = f"gate_set_tomo_{depth}_{i:03d}"
-                nodes[name] = library.nodes["120a_Gate_Set_Tomography_imperfect"].copy(
-                    name=name,
-                    qubits = qubits,
-                    alpha = round(a, 2),
-                    max_circuit_depth_in_power = depth,
-                    reset_type_thermal_or_active=reset_type_thermal_or_active,
                 )
             if first:
                 connectivity.append(
@@ -62,7 +60,7 @@ def generate_nodes(alpha_list):
 nodes, connectivity = generate_nodes(alpha_list)
 
 g = QualibrationGraph(
-    name="gate_set_tomo_via_gate_err",
+    name="qpt_ellipsoid_via_gate_err",
     parameters=Parameters(qubits=qubits),
     nodes=nodes,
     connectivity=connectivity,
