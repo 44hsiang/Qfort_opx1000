@@ -1,4 +1,4 @@
-"""
+"""RESONATOR
         RESONATOR SPECTROSCOPY VERSUS FLUX
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to
 extract the 'I' and 'Q' quadratures. This is done across various readout intermediate dfs and flux biases.
@@ -64,7 +64,6 @@ node = QualibrationNode(name="02b_Resonator_Spectroscopy_vs_Flux", parameters=Pa
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-# path = "/Users/4hsiang/Desktop/Jack/python_project/instrument_control/opx1000/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
 machine = QuAM.load()
 
 # Get the relevant QuAM components
@@ -107,7 +106,7 @@ with program() as multi_res_spec_vs_flux:
     # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
     # For instance, here 'I' is a python list containing two QUA fixed variables.
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
-    dc = declare(fixed)  # QUA variable for the flux bias
+    dc = declare(float)  # QUA variable for the flux bias
     df = declare(int)  # QUA variable for the readout frequency
 
     for i, qubit in enumerate(qubits):
